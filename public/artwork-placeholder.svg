@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="2000" viewBox="0 0 1600 2000" role="img" aria-label="Artwork placeholder">
+  <rect width="1600" height="2000" fill="#f4f4f4"/>
+  <rect x="120" y="160" width="1360" height="1680" fill="#ffffff" stroke="#111111" stroke-opacity="0.08" stroke-width="1"/>
+  <line x1="200" y1="1000" x2="1400" y2="1000" stroke="#111111" stroke-opacity="0.12" stroke-width="1"/>
+  <circle cx="800" cy="1000" r="180" fill="none" stroke="#111111" stroke-opacity="0.18" stroke-width="1"/>
+  <text x="800" y="1860" text-anchor="middle" fill="#111111" fill-opacity="0.35" font-family="Times New Roman, Times, serif" font-style="italic" font-size="36">kairos</text>
+</svg>

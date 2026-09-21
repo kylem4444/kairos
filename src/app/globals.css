@@ -1,26 +1,324 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #ffffff;
+  --ink: #111111;
+  --muted: #757575;
+  --line: #e8e8e8;
+  --destroy: #111111;
+  --ok: #1a1a1a;
+  --warn: #555555;
+  --error: #b42318;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--ink);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.stage {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+}
+
+.visual {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  padding-bottom: 5.5rem;
+}
+
+.artwork-image {
+  position: relative;
+  width: auto;
+  height: auto;
+  max-width: min(100%, 520px);
+  max-height: calc(100dvh - 8rem);
+  object-fit: contain;
+  animation: fadeIn 0.9s ease both;
+}
+
+.visual-shade {
+  display: none;
+}
+
+.thumbs {
+  position: absolute;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.6rem;
+}
+
+.thumb {
+  appearance: none;
+  padding: 0;
+  margin: 0;
+  width: 56px;
+  height: 72px;
+  border: 1px solid var(--line);
+  background: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumb-active,
+.thumb:hover {
+  border-color: var(--ink);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.75rem;
+  padding: clamp(2rem, 5vw, 4.5rem);
+  border-left: 1px solid var(--line);
+  background: var(--bg);
+  animation: fadeIn 0.8s ease both;
+}
+
+.brand {
+  margin: 0;
+  font-family: var(--font-display), "Times New Roman", Times, serif;
+  font-size: clamp(2.5rem, 5vw, 3.75rem);
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-transform: none;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-body), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lede {
+  margin: 0;
+  max-width: 32ch;
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.65;
+  color: var(--ink);
+}
+
+.price {
+  margin: 0.25rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1.25rem;
+}
+
+.price-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.price-value {
+  font-family: var(--font-body), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(1.85rem, 3.5vw, 2.5rem);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.rules {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  font-family: var(--font-body), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 0.95rem 1.5rem;
+  transition: background 0.2s ease, color 0.2s ease;
+  background: transparent;
+  color: var(--ink);
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-purchase {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+
+.btn-purchase:not(:disabled):hover {
+  background: #333;
+  border-color: #333;
+}
+
+.btn-destroy {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.btn-destroy:not(:disabled):hover {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.banner {
+  margin: 0;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  background: transparent;
+}
+
+.banner-success {
+  color: var(--ok);
+}
+
+.banner-error {
+  color: var(--error);
+}
+
+.banner-info {
+  color: var(--warn);
+}
+
+.stream-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  background: #fafafa;
+}
+
+.stream-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.stream-fallback {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stream-fallback a {
+  color: var(--ink);
+  text-underline-offset: 3px;
+}
+
+.demo-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  max-width: 38ch;
+}
+
+.empty {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+  background: var(--bg);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 900px) {
+  .stage {
+    grid-template-columns: 1fr;
+  }
+
+  .visual {
+    min-height: 52dvh;
+    padding-bottom: 5rem;
+  }
+
+  .artwork-image {
+    max-height: calc(52dvh - 6rem);
+  }
+
+  .panel {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    min-height: 48dvh;
+    justify-content: flex-start;
+    padding-top: 2.25rem;
+    gap: 1.35rem;
+  }
 }
