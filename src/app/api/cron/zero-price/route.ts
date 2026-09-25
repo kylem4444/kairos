@@ -18,8 +18,10 @@ function authorize(request: NextRequest): boolean {
 }
 
 /**
- * Called by Vercel Cron every minute. If the week has ended and the piece
- * is still live, flip it to auto_destroyed.
+ * Backup for the page-load flip in getArtworkPublicView.
+ * Vercel Cron calls this on the vercel.json schedule: daily at 00:00 UTC
+ * (`0 0 * * *`), which fits the Hobby once-per-day cron limit.
+ * If the week has ended and the piece is still live, flip it to auto_destroyed.
  */
 export async function GET(request: NextRequest) {
   if (!authorize(request)) {
