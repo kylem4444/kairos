@@ -1,5 +1,9 @@
--- Seed one artwork. After running schema.sql, run this, then flip to live
--- either here or via POST /api/admin/go-live with your admin secret.
+-- Seed one artwork as draft. The sale clock starts only on admin go-live:
+--   POST /api/admin
+--   Authorization: Bearer <ADMIN_SECRET>
+--   { "action": "go-live", "artworkId": "<id returned by this insert>" }
+-- That call sets status to 'live' and live_at to the moment of the request.
+-- Until then the public page shows no live artwork.
 
 insert into public.artworks (
   title,
@@ -14,7 +18,8 @@ insert into public.artworks (
   'One work. One week. The price falls from one million dollars to zero. Purchase it, or destroy it, for whatever the clock shows. If nobody acts, it is destroyed on livestream when the price hits zero.',
   '/artwork/kairos-1-full.png',
   100000000,
-  now(),
+  null,
   604800000,
-  'live'
-);
+  'draft'
+)
+returning id;
