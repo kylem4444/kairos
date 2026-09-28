@@ -1,6 +1,6 @@
-# kairos
+﻿# kairos
 
-A single-page art sale: one artwork, price decays **linearly from $1,000,000 to $0 over 7 days**. Visitors can **Purchase** or **Destroy** at the current price. Open checkouts never block each other — only a completed payment claims the piece; other Stripe sessions are cancelled.
+A single-page art sale: one artwork, price decays **linearly from $1,000,000 to $0 over 7 days**. Visitors can **Purchase** or **Destroy** at the current price. Checkout stays **on the page** so buyers can enter payment details while watching the price fall, then pay at the exact amount they want. Open payments never block each other — only a completed charge claims the piece; other PaymentIntents are cancelled and late payments are refunded.
 
 ---
 
@@ -10,10 +10,10 @@ A single-page art sale: one artwork, price decays **linearly from $1,000,000 to 
 |------|------|
 | **Next.js** | The website + API (checkout, webhooks, cron) |
 | **Vercel** | Hosts the site and runs the daily backup cron |
-| **Supabase** | Postgres database for artwork status + open checkout sessions |
-| **Stripe** | Takes payment; tells us when money actually cleared |
+| **Supabase** | Postgres database for artwork status + open payment sessions |
+| **Stripe** | Embedded Payment Element + PaymentIntents |
 
-Until you add Supabase/Stripe keys, the app runs in **demo mode** (in-memory store + simulated checkout).
+Until you add Supabase/Stripe keys, the app runs in **demo mode** (in-memory store + simulated pay button on-page).
 
 ---
 
@@ -24,7 +24,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Click Purchase or Destroy — demo mode simulates a win without real money.
+Open [http://localhost:3000](http://localhost:3000). Click Purchase or Destroy — the payment panel opens **on the same page** with the live price still ticking. Demo mode simulates a win without real money.
 
 ```bash
 npm test          # price math tests
@@ -51,10 +51,12 @@ SUPABASE_SERVICE_ROLE_KEY=...
 
 ---
 
-## Phase 3 — Stripe
+## Phase 3 — Stripe (embedded)
+
+Checkout uses **Stripe Payment Element** on the kairos page (not redirect Checkout). The charged amount is created at **Pay-click** time via a PaymentIntent so it matches the live ticker.
 
 1. Create an account at [stripe.com](https://stripe.com) (use **test mode** first).
-2. Developers → API keys → put the secret key in `.env.local`:
+2. Developers → API keys → put both keys in `.env.local`:
 
 ```env
 STRIPE_SECRET_KEY=sk_test_...
@@ -69,13 +71,15 @@ stripe listen --forward-to localhost:3000/api/webhook/stripe
 ```
 
 4. Paste the webhook signing secret as `STRIPE_WEBHOOK_SECRET`. That CLI secret is for local forwarding. Production uses the signing secret on the Dashboard endpoint (Deploy checklist).
+5. In the Stripe Dashboard (or CLI), subscribe the endpoint to **`payment_intent.succeeded`**.
 
 ### Race rules (already implemented)
 
-- Starting checkout does **not** reserve the artwork.
-- First `checkout.session.completed` webhook wins (`UPDATE … WHERE status = 'live'`).
-- All other open sessions are **expired** via the Stripe API.
+- Opening the payment panel does **not** reserve the artwork.
+- First `payment_intent.succeeded` webhook wins (`UPDATE … WHERE status = 'live'`).
+- All other open PaymentIntents are **cancelled** via the Stripe API.
 - A late successful payment is **refunded**.
+- Stripe’s card minimum is **$0.50** — below that, pay is blocked until auto-destroy at $0.
 
 ---
 
@@ -108,7 +112,7 @@ curl -X POST http://localhost:3000/api/admin ^
 
 ## Phase 4 — Auto-destroy + livestream
 
-When the week ends and status is still `live`, the piece becomes `auto_destroyed`.
+[`vercel.json`](vercel.json) calls `/api/cron/zero-price`. When the week ends and status is still `live`, it becomes `auto_destroyed`.
 
 **Page load is primary.** Each public read (`getArtworkPublicView`) checks whether the week has elapsed and flips the row on that request. Opening the page after $0 settles the piece.
 
@@ -129,7 +133,7 @@ Set `livestream_url` with the admin `set-livestream` action; the page embeds You
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `STRIPE_SECRET_KEY`
-   - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+   - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — required for browser Payment Element
    - `STRIPE_WEBHOOK_SECRET` — signing secret from the Dashboard webhook endpoint
    - `CRON_SECRET`
    - `ADMIN_SECRET`
@@ -137,9 +141,9 @@ Set `livestream_url` with the admin `set-livestream` action; the page embeds You
 4. Run schema + draft seed in Supabase (Phase 2). Call `go-live` when the week should start.
 5. Stripe webhook checklist (test mode, then the same steps in live mode):
    - Add an endpoint: `https://YOUR_DOMAIN/api/webhook/stripe`.
-   - Subscribe to `checkout.session.completed`. The handler claims the piece on that event, expires other open sessions, and refunds a payment that arrives after the piece is already settled.
+   - Subscribe to **`payment_intent.succeeded`** (not `checkout.session.completed`). The handler claims the piece on that event, cancels other open PaymentIntents, and refunds a payment that arrives after the piece is already settled.
    - Put that endpoint’s signing secret in `STRIPE_WEBHOOK_SECRET` and redeploy. The secret from `stripe listen` is only for localhost.
-   - Complete one test checkout and confirm the artwork leaves `live`. A second completed payment for the same piece should refund.
+   - Complete one test payment and confirm the artwork leaves `live`. A second completed payment for the same piece should refund.
    - In live mode, create the endpoint again, then replace the API keys and webhook secret with the live values.
 
 ---
@@ -147,13 +151,15 @@ Set `livestream_url` with the admin `set-livestream` action; the page embeds You
 ## Project map
 
 ```
-src/app/page.tsx              Single page
-src/components/ArtworkSale.tsx  UI + checkout
-src/lib/price.ts              7-day linear price math
-src/lib/artwork-service.ts    Demo store or Supabase
-src/app/api/checkout          Start Stripe (or demo) checkout
-src/app/api/webhook/stripe    Claim winner + cancel losers
-src/app/api/cron/zero-price   Daily backup auto-destroy at $0
-supabase/schema.sql           Database
-supabase/seed.sql             Draft artwork (go live via admin)
+src/app/page.tsx                    Single page
+src/components/ArtworkSale.tsx      UI + checkout panel
+src/components/EmbeddedCheckout.tsx Stripe Payment Element + live Pay button
+src/lib/price.ts                    7-day linear price math
+src/lib/artwork-service.ts          Demo store or Supabase
+src/app/api/checkout                Readiness check
+src/app/api/checkout/confirm        Create PaymentIntent at click-time amount
+src/app/api/webhook/stripe          Claim winner + cancel losers
+src/app/api/cron/zero-price         Daily backup auto-destroy at $0
+supabase/schema.sql                 Database
+supabase/seed.sql                   Draft artwork (go live via admin)
 ```
