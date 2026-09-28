@@ -19,7 +19,7 @@ export function ActionButtons({
         disabled={disabled || busy}
         onClick={onPurchase}
       >
-        {busy ? "Opening…" : "Purchase"}
+        {busy ? "Loading…" : "Purchase"}
       </button>
       <button
         type="button"
@@ -27,7 +27,7 @@ export function ActionButtons({
         disabled={disabled || busy}
         onClick={onDestroy}
       >
-        {busy ? "Opening…" : "Destroy"}
+        {busy ? "Loading…" : "Destroy"}
       </button>
     </div>
   );

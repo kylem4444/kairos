@@ -40,9 +40,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session;
-      await handleCheckoutCompleted(session);
+    if (event.type === "payment_intent.succeeded") {
+      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      await handlePaymentIntentSucceeded(paymentIntent);
     }
 
     return NextResponse.json({ received: true });
@@ -55,36 +55,44 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+async function handlePaymentIntentSucceeded(
+  paymentIntent: Stripe.PaymentIntent,
+) {
   const stripe = getStripe();
-  const artworkId = session.metadata?.artworkId;
-  const outcome = session.metadata?.outcome as Outcome | undefined;
-  const amountCents = session.amount_total ?? 0;
+  const artworkId = paymentIntent.metadata?.artworkId;
+  const outcome = paymentIntent.metadata?.outcome as Outcome | undefined;
+  const amountCents = paymentIntent.amount_received || paymentIntent.amount;
 
   if (!artworkId || (outcome !== "purchase" && outcome !== "destroy")) {
-    console.error("Checkout session missing metadata", session.id);
+    console.error("PaymentIntent missing metadata", paymentIntent.id);
     return;
   }
 
   const { claimed, alreadySettled } = await claimArtwork({
     artworkId,
-    sessionId: session.id,
+    sessionId: paymentIntent.id,
     outcome,
     amountCents,
   });
 
   if (claimed) {
-    // Expire every other open session so nobody else can finish paying
+    // Cancel every other open PaymentIntent so nobody else can finish paying
     const open = await listOpenSessions(artworkId);
-    const losers = open.filter((s) => s.stripe_session_id !== session.id);
+    const losers = open.filter(
+      (s) => s.stripe_session_id !== paymentIntent.id,
+    );
 
     await Promise.all(
       losers.map(async (loser) => {
         try {
-          await stripe.checkout.sessions.expire(loser.stripe_session_id);
+          await stripe.paymentIntents.cancel(loser.stripe_session_id);
         } catch (err) {
-          // Session may already be complete/expired — continue
-          console.warn("Failed to expire session", loser.stripe_session_id, err);
+          // May already be succeeded/canceled — continue
+          console.warn(
+            "Failed to cancel payment intent",
+            loser.stripe_session_id,
+            err,
+          );
         }
       }),
     );
@@ -95,22 +103,14 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   if (alreadySettled) {
     // Someone else won first — refund this payment
-    const paymentIntentId =
-      typeof session.payment_intent === "string"
-        ? session.payment_intent
-        : session.payment_intent?.id;
-
-    if (paymentIntentId) {
-      try {
-        await stripe.refunds.create({ payment_intent: paymentIntentId });
-      } catch (err) {
-        console.error("Refund failed for late payment", paymentIntentId, err);
-      }
+    try {
+      await stripe.refunds.create({ payment_intent: paymentIntent.id });
+    } catch (err) {
+      console.error("Refund failed for late payment", paymentIntent.id, err);
     }
 
     try {
-      // Mark this session expired in our DB if still open
-      await markSessionsExpired([session.id]);
+      await markSessionsExpired([paymentIntent.id]);
     } catch {
       /* ignore */
     }

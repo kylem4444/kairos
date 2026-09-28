@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import type { ArtworkPublicView } from "@/lib/types";
+import type { ArtworkPublicView, Outcome } from "@/lib/types";
 import { formatUsdFromCents } from "@/lib/price";
 import { ActionButtons } from "./ActionButtons";
+import { EmbeddedCheckout } from "./EmbeddedCheckout";
 import { LivestreamEmbed } from "./LivestreamEmbed";
 import { PriceDisplay } from "./PriceDisplay";
 
@@ -20,7 +21,6 @@ const KAIROS_ONE_GALLERY = [
 ] as const;
 
 function galleryFor(imageUrl: string): string[] {
-  // Kairos #1 is the current piece — always offer full + detail views
   if (
     imageUrl.includes("kairos-1") ||
     imageUrl.includes("artwork-placeholder") ||
@@ -37,6 +37,7 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
   const [busy, setBusy] = useState(false);
   const [banner, setBanner] = useState<Banner>(null);
   const [activeImage, setActiveImage] = useState(0);
+  const [checkoutOutcome, setCheckoutOutcome] = useState<Outcome | null>(null);
 
   const images = useMemo(
     () => galleryFor(view.artwork.image_url),
@@ -57,62 +58,19 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
     return () => window.clearInterval(id);
   }, [refresh]);
 
+  // Handle rare 3DS redirects back to the site
   useEffect(() => {
     const checkout = searchParams.get("checkout");
     const sessionId = searchParams.get("session_id");
-    const demoSettle = searchParams.get("demo_settle");
+
+    if (checkout !== "return" || !sessionId) return;
 
     async function handleReturn() {
-      if (demoSettle === "1" && sessionId) {
-        const outcome = searchParams.get("outcome");
-        const amount = searchParams.get("amount");
-        setBusy(true);
-        try {
-          const res = await fetch("/api/demo/settle", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              session_id: sessionId,
-              outcome,
-              amount: amount ? Number(amount) : undefined,
-            }),
-          });
-          const data = await res.json();
-          await refresh();
-          if (data.winner) {
-            setBanner({
-              kind: "success",
-              text:
-                outcome === "destroy"
-                  ? "You destroyed the artwork."
-                  : "You purchased the artwork.",
-            });
-          } else {
-            setBanner({
-              kind: "error",
-              text: "Someone else already claimed it. Your demo session did not win.",
-            });
-          }
-        } finally {
-          setBusy(false);
-          window.history.replaceState({}, "", "/");
-        }
-        return;
-      }
-
-      if (checkout === "cancel") {
-        setBanner({
-          kind: "info",
-          text: "Checkout cancelled. The artwork is still available.",
-        });
-        window.history.replaceState({}, "", "/");
-        return;
-      }
-
-      if (checkout === "success" && sessionId) {
-        for (let i = 0; i < 8; i++) {
+      setBusy(true);
+      try {
+        for (let i = 0; i < 10; i++) {
           const res = await fetch(
-            `/api/checkout/status?session_id=${encodeURIComponent(sessionId)}`,
+            `/api/checkout/status?session_id=${encodeURIComponent(sessionId!)}`,
           );
           if (res.ok) {
             const data = await res.json();
@@ -137,18 +95,27 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
               return;
             }
           }
-          await new Promise((r) => setTimeout(r, 750));
+          await new Promise((r) => setTimeout(r, 600));
         }
         setBanner({
           kind: "info",
           text: "Payment received. Confirming… refresh if the status does not update.",
         });
         window.history.replaceState({}, "", "/");
+      } finally {
+        setBusy(false);
       }
     }
 
     void handleReturn();
   }, [searchParams, refresh]);
+
+  // Close checkout if artwork settles while panel is open
+  useEffect(() => {
+    if (view.artwork.status !== "live" && checkoutOutcome) {
+      setCheckoutOutcome(null);
+    }
+  }, [view.artwork.status, checkoutOutcome]);
 
   const statusCopy = useMemo(() => {
     const { artwork } = view;
@@ -166,15 +133,11 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
     }
   }, [view]);
 
-  async function startCheckout(outcome: "purchase" | "destroy") {
+  async function openCheckout(outcome: Outcome) {
     setBusy(true);
     setBanner(null);
     try {
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ outcome }),
-      });
+      const res = await fetch("/api/checkout", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) {
         setBanner({
@@ -184,11 +147,7 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
         await refresh();
         return;
       }
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-      setBanner({ kind: "error", text: "No checkout URL returned." });
+      setCheckoutOutcome(outcome);
     } catch {
       setBanner({ kind: "error", text: "Network error starting checkout." });
     } finally {
@@ -264,12 +223,58 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
           </p>
         ) : null}
 
-        {isLive ? (
+        {isLive && checkoutOutcome ? (
+          <EmbeddedCheckout
+            outcome={checkoutOutcome}
+            startPriceCents={artwork.start_price_cents}
+            liveAt={artwork.live_at}
+            durationMs={artwork.duration_ms}
+            onCancel={() => {
+              setCheckoutOutcome(null);
+              setBanner({
+                kind: "info",
+                text: "Checkout cancelled. The artwork is still available.",
+              });
+            }}
+            onError={(message) => {
+              setBanner({ kind: "error", text: message });
+            }}
+            onSettled={async (result) => {
+              setCheckoutOutcome(null);
+              await refresh();
+              if (result.youWon) {
+                setBanner({
+                  kind: "success",
+                  text:
+                    result.outcome === "destroy"
+                      ? "Payment received. You destroyed the artwork."
+                      : "Payment received. You purchased the artwork.",
+                });
+              } else if (result.someoneElse) {
+                setBanner({
+                  kind: "error",
+                  text:
+                    result.message ??
+                    "Someone else claimed it first. If you were charged, you will be refunded.",
+                });
+              } else {
+                setBanner({
+                  kind: "info",
+                  text:
+                    result.message ??
+                    "Payment submitted. Confirming… refresh if needed.",
+                });
+              }
+            }}
+          />
+        ) : null}
+
+        {isLive && !checkoutOutcome ? (
           <ActionButtons
             disabled={false}
             busy={busy}
-            onPurchase={() => void startCheckout("purchase")}
-            onDestroy={() => void startCheckout("destroy")}
+            onPurchase={() => void openCheckout("purchase")}
+            onDestroy={() => void openCheckout("destroy")}
           />
         ) : null}
 
@@ -279,8 +284,8 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
 
         {view.demoMode ? (
           <p className="demo-note">
-            Demo mode — no Stripe/Supabase keys detected. Checkout simulates a
-            purchase so you can try the flow locally.
+            Demo mode — no Stripe/Supabase keys detected. Checkout stays on this
+            page so you can watch the price and pay when you want.
           </p>
         ) : null}
       </section>
