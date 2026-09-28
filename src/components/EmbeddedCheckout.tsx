@@ -181,8 +181,9 @@ function StripePayShell({
   onError: (message: string) => void;
 }) {
   const stripePromise = useMemo(() => getStripePromise(), []);
-  // Remount Elements when amount crosses large thresholds is heavy;
-  // we keep a stable initial amount and sync via elements.update in the form.
+  // Elements mounts once with this amount. The live ticker must not call
+  // elements.update — each update restarts Payment Element and onReady
+  // never fires. pay() applies the clicked price once, before submit.
   const [initialAmount] = useState(amountCents);
 
   const options: StripeElementsOptions = useMemo(
@@ -252,17 +253,6 @@ function StripePayForm({
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
 
-  // Keep Elements amount in sync with the ticking price (min $0.50 for Stripe)
-  useEffect(() => {
-    if (!elements) return;
-    const synced = Math.max(amountCents, 50);
-    try {
-      elements.update({ amount: synced });
-    } catch {
-      /* Elements may not be ready yet */
-    }
-  }, [amountCents, elements]);
-
   async function pollStatus(paymentIntentId: string): Promise<CheckoutResult> {
     for (let i = 0; i < 10; i++) {
       const res = await fetch(
@@ -302,9 +292,9 @@ function StripePayForm({
 
     setBusy(true);
     try {
-      // Sync amount one last time before submit so Elements matches the PI
+      // One amount sync, at click — not on the 250ms price ticker.
       const payAmount = Math.max(amountCents, 50);
-      elements.update({ amount: payAmount });
+      await elements.update({ amount: payAmount });
 
       const { error: submitError } = await elements.submit();
       if (submitError) {
@@ -323,9 +313,18 @@ function StripePayForm({
         return;
       }
 
-      // Price may have moved between click and PI create — align Elements
+      // Server amount is what the PaymentIntent charges. If it drifted
+      // during confirm, align once and submit again before confirmPayment.
       if (typeof data.amountCents === "number") {
-        elements.update({ amount: Math.max(data.amountCents, 50) });
+        const confirmedAmount = Math.max(data.amountCents, 50);
+        if (confirmedAmount !== payAmount) {
+          await elements.update({ amount: confirmedAmount });
+          const { error: resubmitError } = await elements.submit();
+          if (resubmitError) {
+            onError(resubmitError.message ?? "Check your payment details.");
+            return;
+          }
+        }
       }
 
       const { error, paymentIntent } = await stripe.confirmPayment({
