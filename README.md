@@ -1,4 +1,4 @@
-﻿# kairos
+# kairos
 
 A single-page art sale: one artwork, price decays **linearly from $1,000,000 to $0 over 7 days**. Visitors can **Purchase** or **Destroy** at the current price. Checkout stays **on the page** so buyers can enter payment details while watching the price fall, then pay at the exact amount they want. Open payments never block each other — only a completed charge claims the piece; other PaymentIntents are cancelled and late payments are refunded.
 
