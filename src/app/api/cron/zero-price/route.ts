@@ -43,7 +43,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    if (!isPastZero(artwork.live_at, artwork.duration_ms)) {
+    if (
+      !artwork.live_at ||
+      !isPastZero(artwork.live_at, artwork.duration_ms)
+    ) {
       return NextResponse.json({
         ok: true,
         action: "none",

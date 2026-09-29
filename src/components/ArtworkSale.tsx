@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { STATIC_ARTWORK_DESCRIPTION } from "@/lib/copy";
 import type { ArtworkPublicView, Outcome } from "@/lib/types";
+import { galleryUrls } from "@/lib/types";
 import { formatUsdFromCents } from "@/lib/price";
 import { ActionButtons } from "./ActionButtons";
 import { EmbeddedCheckout } from "./EmbeddedCheckout";
@@ -15,20 +17,23 @@ type Banner =
   | { kind: "error"; text: string }
   | null;
 
-const KAIROS_ONE_GALLERY = [
-  "/artwork/kairos-1-full.png",
-  "/artwork/kairos-1-detail.png",
-] as const;
-
-function galleryFor(imageUrl: string): string[] {
-  if (
-    imageUrl.includes("kairos-1") ||
-    imageUrl.includes("artwork-placeholder") ||
-    imageUrl.startsWith("/artwork/")
-  ) {
-    return [...KAIROS_ONE_GALLERY];
-  }
-  return [imageUrl];
+function trackEvent(
+  name: "page_view" | "checkout_open",
+  artworkId: string,
+  meta?: Record<string, unknown>,
+) {
+  void fetch("/api/analytics/collect", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name,
+      artwork_id: artworkId,
+      meta,
+    }),
+    keepalive: true,
+  }).catch(() => {
+    /* ignore analytics failures */
+  });
 }
 
 export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
@@ -40,8 +45,8 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
   const [checkoutOutcome, setCheckoutOutcome] = useState<Outcome | null>(null);
 
   const images = useMemo(
-    () => galleryFor(view.artwork.image_url),
-    [view.artwork.image_url],
+    () => galleryUrls(view.artwork),
+    [view.artwork],
   );
 
   const refresh = useCallback(async () => {
@@ -57,6 +62,18 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
     }, 5000);
     return () => window.clearInterval(id);
   }, [refresh]);
+
+  // One page_view per artwork visit (sessionStorage dedupe)
+  useEffect(() => {
+    const key = `kairos_pv_${view.artwork.id}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      /* private mode */
+    }
+    trackEvent("page_view", view.artwork.id);
+  }, [view.artwork.id]);
 
   // Handle rare 3DS redirects back to the site
   useEffect(() => {
@@ -110,7 +127,6 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
     void handleReturn();
   }, [searchParams, refresh]);
 
-  // Close checkout if artwork settles while panel is open
   useEffect(() => {
     if (view.artwork.status !== "live" && checkoutOutcome) {
       setCheckoutOutcome(null);
@@ -147,6 +163,7 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
         await refresh();
         return;
       }
+      trackEvent("checkout_open", view.artwork.id, { outcome });
       setCheckoutOutcome(outcome);
     } catch {
       setBanner({ kind: "error", text: "Network error starting checkout." });
@@ -157,6 +174,7 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
 
   const { artwork } = view;
   const isLive = artwork.status === "live";
+  const liveAt = artwork.live_at ?? new Date().toISOString();
   const showStream =
     (artwork.status === "destroyed" || artwork.status === "auto_destroyed") &&
     artwork.livestream_url;
@@ -175,7 +193,7 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
           <div className="thumbs" role="tablist" aria-label="Artwork views">
             {images.map((src, index) => (
               <button
-                key={src}
+                key={`${src}-${index}`}
                 type="button"
                 role="tab"
                 aria-selected={activeImage === index}
@@ -195,12 +213,12 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
       <section className="panel">
         <p className="brand">kairos</p>
         <h1 className="title">{artwork.title}</h1>
-        <p className="lede">{artwork.description}</p>
+        <p className="lede">{STATIC_ARTWORK_DESCRIPTION}</p>
 
         {isLive ? (
           <PriceDisplay
             startPriceCents={artwork.start_price_cents}
-            liveAt={artwork.live_at}
+            liveAt={liveAt}
             durationMs={artwork.duration_ms}
             active
           />
@@ -227,7 +245,7 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
           <EmbeddedCheckout
             outcome={checkoutOutcome}
             startPriceCents={artwork.start_price_cents}
-            liveAt={artwork.live_at}
+            liveAt={liveAt}
             durationMs={artwork.duration_ms}
             onCancel={() => {
               setCheckoutOutcome(null);

@@ -83,29 +83,49 @@ stripe listen --forward-to localhost:3000/api/webhook/stripe
 
 ---
 
-## Admin helpers
+## Admin dashboard (hidden)
 
-Set `ADMIN_SECRET` in `.env.local`. The seeded row stays `draft` until `go-live`. That action sets `status` to `live` and `live_at` to the moment of the call, which starts the 7-day decay.
+There is **no link** to the admin from the public site. Open it only via URL:
+
+`https://YOUR_DOMAIN/dashboard`  
+Local: [http://localhost:3000/dashboard](http://localhost:3000/dashboard)
+
+**Security layers**
+
+- Hidden path (not linked, `robots: noindex`)
+- Password login (`ADMIN_PASSWORD`) with httpOnly, Secure, SameSite=Strict cookie signed by `ADMIN_SECRET`
+- Failed-login rate limit + lockout
+- `/api/admin/*` gated by session cookie or `Authorization: Bearer <ADMIN_SECRET>`
+- Production refuses admin if either secret is missing
+
+Set both in `.env.local` / Vercel:
+
+```env
+ADMIN_SECRET=long-random-signing-secret
+ADMIN_PASSWORD=long-random-login-password
+```
+
+Locally, if those are unset, the login password defaults to `dev-admin` (never rely on this in production).
+
+**Dashboard features**
+
+- Lifetime revenue (sum of settled purchase/destroy amounts)
+- Page views, checkout opens, payments succeeded (7d / 30d / all)
+- Create draft artworks, edit title/description/price/duration
+- Upload photos (Supabase Storage bucket `artwork`; demo mode uses inline data URLs)
+- **Start countdown** (go live) — only one live artwork at a time
+- Livestream URL
+
+After schema, run [`supabase/admin_migration.sql`](supabase/admin_migration.sql) on existing projects (adds `image_urls`, `analytics_events`, storage bucket). Fresh installs that use the updated [`schema.sql`](supabase/schema.sql) still need the storage bucket section from the migration (or create bucket `artwork` in the dashboard).
+
+### Curl helpers (optional)
 
 ```bash
-# Flip the seeded draft live (Supabase). Pass the id from seed.sql (returning id).
-# A draft is hidden from the public page, so artworkId is required for first launch.
+# Bearer automation still works with ADMIN_SECRET
 curl -X POST http://localhost:3000/api/admin ^
-  -H "Authorization: Bearer change-me-admin" ^
+  -H "Authorization: Bearer change-me-admin-signing-secret" ^
   -H "Content-Type: application/json" ^
   -d "{\"action\":\"go-live\",\"artworkId\":\"YOUR-UUID\"}"
-
-# Set livestream URL (YouTube or Twitch)
-curl -X POST http://localhost:3000/api/admin ^
-  -H "Authorization: Bearer change-me-admin" ^
-  -H "Content-Type: application/json" ^
-  -d "{\"action\":\"set-livestream\",\"url\":\"https://www.youtube.com/watch?v=...\"}"
-
-# Reset demo artwork to live now (demo mode only)
-curl -X POST http://localhost:3000/api/admin ^
-  -H "Authorization: Bearer change-me-admin" ^
-  -H "Content-Type: application/json" ^
-  -d "{\"action\":\"reset-demo\"}"
 ```
 
 ---
@@ -136,7 +156,8 @@ Set `livestream_url` with the admin `set-livestream` action; the page embeds You
    - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — required for browser Payment Element
    - `STRIPE_WEBHOOK_SECRET` — signing secret from the Dashboard webhook endpoint
    - `CRON_SECRET`
-   - `ADMIN_SECRET`
+   - `ADMIN_SECRET` — cookie signing + Bearer automation
+   - `ADMIN_PASSWORD` — `/dashboard` login (long random)
    - Omit `USE_DEMO_STORE` so production uses Supabase.
 4. Run schema + draft seed in Supabase (Phase 2). Call `go-live` when the week should start.
 5. Stripe webhook checklist (test mode, then the same steps in live mode):
@@ -151,15 +172,33 @@ Set `livestream_url` with the admin `set-livestream` action; the page embeds You
 ## Project map
 
 ```
-src/app/page.tsx                    Single page
+src/app/page.tsx                    Public sale page
+src/app/dashboard                   Hidden admin (no public links)
 src/components/ArtworkSale.tsx      UI + checkout panel
 src/components/EmbeddedCheckout.tsx Stripe Payment Element + live Pay button
+src/components/admin/AdminDashboard.tsx
 src/lib/price.ts                    7-day linear price math
 src/lib/artwork-service.ts          Demo store or Supabase
+src/lib/admin-auth.ts               Password session + rate limit
 src/app/api/checkout                Readiness check
 src/app/api/checkout/confirm        Create PaymentIntent at click-time amount
 src/app/api/webhook/stripe          Claim winner + cancel losers
 src/app/api/cron/zero-price         Daily backup auto-destroy at $0
+src/app/api/admin/*                 Dashboard APIs
+src/app/api/analytics/collect       Public allowlisted events
 supabase/schema.sql                 Database
+supabase/admin_migration.sql        Admin extras for existing DBs
 supabase/seed.sql                   Draft artwork (go live via admin)
 ```
+
+---
+
+## Grokbot ops checklist (Supabase / Vercel / admin)
+
+1. **Supabase SQL** — If the project already ran older schema: run `supabase/admin_migration.sql`. Fresh project: run `schema.sql`, `seed.sql`, then the Storage section of `admin_migration.sql` (or create public bucket `artwork` with image mime types).
+2. **Vercel env** — Set all vars from `.env.example`, especially `ADMIN_SECRET`, `ADMIN_PASSWORD`, Supabase, Stripe, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET`. Redeploy after changing `NEXT_PUBLIC_*`.
+3. **Stripe webhook** — `https://YOUR_DOMAIN/api/webhook/stripe` → `payment_intent.succeeded`.
+4. **Smoke `/dashboard`** — open only via URL (no site links). Log in with `ADMIN_PASSWORD`. Create/edit artwork, upload photos, start countdown. Confirm public `/` shows the live piece and gallery.
+5. **Analytics** — load `/` once, open checkout, complete a test payment; dashboard Overview should show page views / checkout opens / revenue.
+6. **Cron** — confirm daily `/api/cron/zero-price` + `CRON_SECRET`.
+7. Report: production URL, envs set (names only), migration done, dashboard login OK, photo upload OK, go-live OK.

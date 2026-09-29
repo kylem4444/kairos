@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import {
   claimArtwork,
   getCurrentArtwork,
@@ -36,6 +37,16 @@ export async function POST(request: NextRequest) {
           error: "unavailable",
           message:
             "This artwork is no longer available. Someone else may have already claimed it.",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (!artwork.live_at) {
+      return NextResponse.json(
+        {
+          error: "unavailable",
+          message: "This artwork is not live yet.",
         },
         { status: 409 },
       );
@@ -100,6 +111,17 @@ export async function POST(request: NextRequest) {
           .filter((s) => s.stripe_session_id !== fakeSessionId)
           .map((s) => s.stripe_session_id);
         await markSessionsExpired(losers);
+
+        await trackAnalyticsEvent({
+          name: "payment_succeeded",
+          artwork_id: artwork.id,
+          meta: {
+            outcome,
+            amountCents,
+            demo: true,
+            paymentIntentId: fakeSessionId,
+          },
+        });
 
         return NextResponse.json({
           demo: true,
