@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  adminConfigError,
+  adminUnavailableResponse,
+  isAuthorizedAdmin,
+  unauthorizedResponse,
+} from "@/lib/admin-auth";
+import {
   getCurrentArtwork,
   goLive,
   isDemoMode,
@@ -9,25 +15,15 @@ import {
 
 export const dynamic = "force-dynamic";
 
-function authorize(request: NextRequest): boolean {
-  const secret = process.env.ADMIN_SECRET;
-  if (!secret) {
-    return isDemoMode() || process.env.NODE_ENV !== "production";
-  }
-  const auth = request.headers.get("authorization");
-  return auth === `Bearer ${secret}`;
-}
-
 /**
- * Admin helpers:
+ * Legacy admin helpers (Bearer or session cookie):
  * - { action: "go-live", artworkId? }
  * - { action: "set-livestream", url, artworkId? }
- * - { action: "reset-demo" }  // demo mode only
+ * - { action: "reset-demo" }
  */
 export async function POST(request: NextRequest) {
-  if (!authorize(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (adminConfigError()) return adminUnavailableResponse();
+  if (!isAuthorizedAdmin(request)) return unauthorizedResponse();
 
   try {
     const body = (await request.json()) as {
@@ -58,14 +54,20 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.action === "go-live") {
-      const artwork = await goLive(artworkId);
-      if (!artwork) {
-        return NextResponse.json(
-          { error: "Could not go live (must be draft, or use reset-demo)" },
-          { status: 409 },
-        );
+      try {
+        const artwork = await goLive(artworkId);
+        if (!artwork) {
+          return NextResponse.json(
+            { error: "Could not go live (must be draft)" },
+            { status: 409 },
+          );
+        }
+        return NextResponse.json({ ok: true, artwork });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Go live failed";
+        return NextResponse.json({ error: message }, { status: 409 });
       }
-      return NextResponse.json({ ok: true, artwork });
     }
 
     if (body.action === "set-livestream") {

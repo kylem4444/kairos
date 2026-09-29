@@ -9,6 +9,7 @@ insert into public.artworks (
   title,
   description,
   image_url,
+  image_urls,
   start_price_cents,
   live_at,
   duration_ms,
@@ -17,6 +18,10 @@ insert into public.artworks (
   'Untitled No. 1',
   'One work. One week. The price falls from one million dollars to zero. Purchase it, or destroy it, for whatever the clock shows. If nobody acts, it is destroyed on livestream when the price hits zero.',
   '/artwork/kairos-1-full.png',
+  array[
+    '/artwork/kairos-1-full.png',
+    '/artwork/kairos-1-detail.png'
+  ],
   100000000,
   null,
   604800000,

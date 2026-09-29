@@ -23,6 +23,16 @@ export async function GET() {
       );
     }
 
+    if (!artwork.live_at) {
+      return NextResponse.json(
+        {
+          error: "unavailable",
+          message: "This artwork is not live yet.",
+        },
+        { status: 409 },
+      );
+    }
+
     const amountCents = computePriceCents({
       startPriceCents: artwork.start_price_cents,
       liveAt: artwork.live_at,

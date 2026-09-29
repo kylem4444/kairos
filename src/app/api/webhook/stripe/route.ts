@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import {
   claimArtwork,
   listOpenSessions,
@@ -98,6 +99,16 @@ async function handlePaymentIntentSucceeded(
     );
 
     await markSessionsExpired(losers.map((s) => s.stripe_session_id));
+
+    await trackAnalyticsEvent({
+      name: "payment_succeeded",
+      artwork_id: artworkId,
+      meta: {
+        outcome,
+        amountCents,
+        paymentIntentId: paymentIntent.id,
+      },
+    });
     return;
   }
 

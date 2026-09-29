@@ -19,6 +19,7 @@ create table public.artworks (
   title text not null,
   description text not null default '',
   image_url text not null,
+  image_urls text[] not null default '{}',
   start_price_cents bigint not null default 100000000,
   live_at timestamptz,
   duration_ms bigint not null default 604800000, -- 7 days
@@ -71,3 +72,19 @@ create policy "Public read non-draft artworks"
   using (status <> 'draft');
 
 -- No public access to checkout_sessions (service role only)
+
+-- First-party analytics (service role only)
+create table if not exists public.analytics_events (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  artwork_id uuid references public.artworks (id) on delete set null,
+  meta jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  constraint analytics_events_name_check
+    check (name in ('page_view', 'checkout_open', 'payment_succeeded'))
+);
+
+create index if not exists analytics_events_name_created_idx
+  on public.analytics_events (name, created_at desc);
+
+alter table public.analytics_events enable row level security;

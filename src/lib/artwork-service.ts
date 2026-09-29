@@ -1,19 +1,30 @@
+import { STATIC_ARTWORK_DESCRIPTION } from "./copy";
 import {
+  demoAppendImages,
   demoClaimArtwork,
+  demoCreateArtwork,
+  demoDeleteArtwork,
   demoExpireSessions,
+  demoGetArtwork,
   demoGetCurrentArtwork,
   demoGetSession,
+  demoGoLive,
+  demoHasLiveArtwork,
+  demoListArtworks,
   demoListOpenSessions,
   demoLogCheckoutSession,
   demoMarkAutoDestroyed,
   demoResetArtwork,
   demoSetLivestreamUrl,
+  demoUpdateArtwork,
 } from "./demo-store";
 import {
   computePriceCents,
   endsAt,
   formatUsdFromCents,
   isPastZero,
+  START_PRICE_CENTS,
+  WEEK_MS,
 } from "./price";
 import { getSupabaseAdmin, isSupabaseConfigured } from "./supabase";
 import type {
@@ -22,11 +33,16 @@ import type {
   CheckoutSessionRow,
   Outcome,
 } from "./types";
+import { normalizeArtwork } from "./types";
 
 export function isDemoMode(): boolean {
   return (
     process.env.USE_DEMO_STORE === "true" || !isSupabaseConfigured()
   );
+}
+
+function asArtwork(row: Artwork | null): Artwork | null {
+  return row ? normalizeArtwork(row) : null;
 }
 
 export async function getCurrentArtwork(): Promise<Artwork | null> {
@@ -35,6 +51,17 @@ export async function getCurrentArtwork(): Promise<Artwork | null> {
   }
 
   const supabase = getSupabaseAdmin();
+  const { data: live, error: liveError } = await supabase
+    .from("artworks")
+    .select("*")
+    .eq("status", "live")
+    .order("live_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (liveError) throw liveError;
+  if (live) return asArtwork(live as Artwork);
+
   const { data, error } = await supabase
     .from("artworks")
     .select("*")
@@ -44,7 +71,7 @@ export async function getCurrentArtwork(): Promise<Artwork | null> {
     .maybeSingle();
 
   if (error) throw error;
-  return data as Artwork | null;
+  return asArtwork(data as Artwork | null);
 }
 
 export async function getArtworkPublicView(
@@ -53,9 +80,9 @@ export async function getArtworkPublicView(
   let artwork = await getCurrentArtwork();
   if (!artwork) return null;
 
-  // Auto-flip to auto_destroyed if the week elapsed while still live
   if (
     artwork.status === "live" &&
+    artwork.live_at &&
     isPastZero(artwork.live_at, artwork.duration_ms, now)
   ) {
     artwork = (await markAutoDestroyed(artwork.id)) ?? artwork;
@@ -63,22 +90,194 @@ export async function getArtworkPublicView(
 
   const priceCents = computePriceCents({
     startPriceCents: artwork.start_price_cents,
-    liveAt: artwork.live_at,
+    liveAt: artwork.live_at ?? now,
     durationMs: artwork.duration_ms,
     now,
   });
 
   return {
     artwork,
-    priceCents: artwork.status === "live" ? priceCents : (artwork.settled_amount_cents ?? priceCents),
+    priceCents:
+      artwork.status === "live"
+        ? priceCents
+        : (artwork.settled_amount_cents ?? priceCents),
     priceFormatted: formatUsdFromCents(
       artwork.status === "live"
         ? priceCents
         : (artwork.settled_amount_cents ?? priceCents),
     ),
-    endsAt: endsAt(artwork.live_at, artwork.duration_ms).toISOString(),
+    endsAt: endsAt(
+      artwork.live_at ?? now,
+      artwork.duration_ms,
+    ).toISOString(),
     demoMode: isDemoMode(),
   };
+}
+
+export async function listArtworks(): Promise<Artwork[]> {
+  if (isDemoMode()) {
+    return demoListArtworks();
+  }
+
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("artworks")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).map((row) => normalizeArtwork(row as Artwork));
+}
+
+export async function getArtworkById(id: string): Promise<Artwork | null> {
+  if (isDemoMode()) {
+    return demoGetArtwork(id);
+  }
+
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("artworks")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return asArtwork(data as Artwork | null);
+}
+
+export async function createArtwork(input: {
+  title: string;
+  description?: string;
+  image_url?: string;
+  image_urls?: string[];
+  start_price_cents?: number;
+  duration_ms?: number;
+}): Promise<Artwork> {
+  if (isDemoMode()) {
+    return demoCreateArtwork(input);
+  }
+
+  const urls =
+    input.image_urls && input.image_urls.length > 0
+      ? input.image_urls
+      : input.image_url
+        ? [input.image_url]
+        : ["/artwork-placeholder.svg"];
+
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("artworks")
+    .insert({
+      title: input.title,
+      description: input.description ?? STATIC_ARTWORK_DESCRIPTION,
+      image_url: urls[0],
+      image_urls: urls,
+      start_price_cents: input.start_price_cents ?? START_PRICE_CENTS,
+      duration_ms: input.duration_ms ?? WEEK_MS,
+      status: "draft",
+      live_at: null,
+    })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return normalizeArtwork(data as Artwork);
+}
+
+/** Deletes a draft artwork only. Live/settled pieces cannot be removed. */
+export async function deleteArtwork(id: string): Promise<boolean> {
+  if (isDemoMode()) {
+    return demoDeleteArtwork(id);
+  }
+
+  const existing = await getArtworkById(id);
+  if (!existing || existing.status !== "draft") return false;
+
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase.from("artworks").delete().eq("id", id);
+  if (error) throw error;
+  return true;
+}
+
+export async function updateArtwork(
+  id: string,
+  patch: {
+    title?: string;
+    description?: string;
+    image_url?: string;
+    image_urls?: string[];
+    start_price_cents?: number;
+    duration_ms?: number;
+    livestream_url?: string | null;
+  },
+): Promise<Artwork | null> {
+  if (isDemoMode()) {
+    return demoUpdateArtwork(id, patch);
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (patch.title !== undefined) updates.title = patch.title;
+  if (patch.description !== undefined) updates.description = patch.description;
+  if (patch.start_price_cents !== undefined) {
+    updates.start_price_cents = patch.start_price_cents;
+  }
+  if (patch.duration_ms !== undefined) updates.duration_ms = patch.duration_ms;
+  if (patch.livestream_url !== undefined) {
+    updates.livestream_url = patch.livestream_url;
+  }
+  if (patch.image_urls !== undefined) {
+    updates.image_urls = patch.image_urls;
+    updates.image_url = patch.image_urls[0] ?? "/artwork-placeholder.svg";
+  } else if (patch.image_url !== undefined) {
+    updates.image_url = patch.image_url;
+  }
+
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("artworks")
+    .update(updates)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+
+  if (error) throw error;
+  return asArtwork(data as Artwork | null);
+}
+
+export async function appendArtworkImages(
+  id: string,
+  urls: string[],
+): Promise<Artwork | null> {
+  if (urls.length === 0) return getArtworkById(id);
+
+  if (isDemoMode()) {
+    return demoAppendImages(id, urls);
+  }
+
+  const existing = await getArtworkById(id);
+  if (!existing) return null;
+  const merged = [...existing.image_urls, ...urls];
+  return updateArtwork(id, { image_urls: merged });
+}
+
+export async function hasLiveArtwork(excludeId?: string): Promise<boolean> {
+  if (isDemoMode()) {
+    return demoHasLiveArtwork(excludeId);
+  }
+
+  const supabase = getSupabaseAdmin();
+  let query = supabase
+    .from("artworks")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "live");
+
+  if (excludeId) {
+    query = query.neq("id", excludeId);
+  }
+
+  const { count, error } = await query;
+  if (error) throw error;
+  return (count ?? 0) > 0;
 }
 
 export async function logCheckoutSession(input: {
@@ -108,10 +307,6 @@ export async function logCheckoutSession(input: {
   return data as CheckoutSessionRow;
 }
 
-/**
- * First successful payment wins. Returns the claimed artwork, or null if
- * another payment already settled the piece.
- */
 export async function claimArtwork(input: {
   artworkId: string;
   sessionId: string;
@@ -151,7 +346,10 @@ export async function claimArtwork(input: {
       .update({ status: "completed" })
       .eq("stripe_session_id", input.sessionId);
 
-    return { claimed: data as Artwork, alreadySettled: false };
+    return {
+      claimed: normalizeArtwork(data as Artwork),
+      alreadySettled: false,
+    };
   }
 
   return { claimed: null, alreadySettled: true };
@@ -216,7 +414,7 @@ export async function markAutoDestroyed(
   artworkId: string,
 ): Promise<Artwork | null> {
   if (isDemoMode()) {
-    return demoMarkAutoDestroyed();
+    return demoMarkAutoDestroyed(artworkId);
   }
 
   const supabase = getSupabaseAdmin();
@@ -233,7 +431,7 @@ export async function markAutoDestroyed(
     .maybeSingle();
 
   if (error) throw error;
-  return data as Artwork | null;
+  return asArtwork(data as Artwork | null);
 }
 
 export async function setLivestreamUrl(
@@ -241,7 +439,7 @@ export async function setLivestreamUrl(
   url: string,
 ): Promise<Artwork | null> {
   if (isDemoMode()) {
-    return demoSetLivestreamUrl(url);
+    return demoSetLivestreamUrl(url, artworkId);
   }
 
   const supabase = getSupabaseAdmin();
@@ -253,19 +451,16 @@ export async function setLivestreamUrl(
     .maybeSingle();
 
   if (error) throw error;
-  return data as Artwork | null;
+  return asArtwork(data as Artwork | null);
 }
 
 export async function goLive(artworkId: string): Promise<Artwork | null> {
+  if (await hasLiveArtwork(artworkId)) {
+    throw new Error("Another artwork is already live");
+  }
+
   if (isDemoMode()) {
-    return demoResetArtwork({
-      status: "live",
-      live_at: new Date().toISOString(),
-      settled_outcome: null,
-      settled_at: null,
-      settled_amount_cents: null,
-      winning_session_id: null,
-    });
+    return demoGoLive(artworkId);
   }
 
   const supabase = getSupabaseAdmin();
@@ -285,7 +480,7 @@ export async function goLive(artworkId: string): Promise<Artwork | null> {
     .maybeSingle();
 
   if (error) throw error;
-  return data as Artwork | null;
+  return asArtwork(data as Artwork | null);
 }
 
 export async function resetDemoArtwork(): Promise<Artwork> {
@@ -296,4 +491,51 @@ export async function resetDemoArtwork(): Promise<Artwork> {
     live_at: new Date().toISOString(),
     status: "live",
   });
+}
+
+export async function uploadArtworkImage(file: {
+  buffer: Buffer;
+  contentType: string;
+  filename: string;
+}): Promise<string> {
+  const allowed = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+  ]);
+  if (!allowed.has(file.contentType)) {
+    throw new Error("Unsupported image type");
+  }
+  if (file.buffer.length > 10 * 1024 * 1024) {
+    throw new Error("Image too large (max 10MB)");
+  }
+
+  if (isDemoMode()) {
+    // Persist as data URL so demo mode works without Storage
+    const b64 = file.buffer.toString("base64");
+    return `data:${file.contentType};base64,${b64}`;
+  }
+
+  const ext =
+    file.contentType === "image/png"
+      ? "png"
+      : file.contentType === "image/webp"
+        ? "webp"
+        : file.contentType === "image/gif"
+          ? "gif"
+          : "jpg";
+  const path = `${crypto.randomUUID()}.${ext}`;
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase.storage
+    .from("artwork")
+    .upload(path, file.buffer, {
+      contentType: file.contentType,
+      upsert: false,
+    });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from("artwork").getPublicUrl(path);
+  return data.publicUrl;
 }
