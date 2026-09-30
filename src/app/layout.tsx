@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import { Bodoni_Moda, Libre_Franklin } from "next/font/google";
+import localFont from "next/font/local";
+import { Libre_Franklin } from "next/font/google";
 import "./globals.css";
 
-const display = Bodoni_Moda({
+/** Serith — preview for kairos branding. Personal-use license; need commercial license for live sale. */
+const display = localFont({
+  src: "../fonts/Serith.otf",
   variable: "--font-display",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
+  display: "swap",
 });
 
 const body = Libre_Franklin({

@@ -43,6 +43,8 @@ export async function PATCH(request: NextRequest, context: Ctx) {
       description?: string;
       image_url?: string;
       image_urls?: string[];
+      destroyed_image_urls?: string[];
+      is_test?: boolean;
       start_price_cents?: number;
       duration_ms?: number;
       livestream_url?: string | null;

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { getArtworkPublicView } from "@/lib/artwork-service";
 import { ArtworkSale } from "@/components/ArtworkSale";
 
@@ -13,6 +14,9 @@ export default async function HomePage() {
         <div>
           <p className="brand">kairos</p>
           <p className="rules">No artwork is live right now.</p>
+          <p className="gallery-link">
+            <Link href="/gallery">Gallery</Link>
+          </p>
         </div>
       </main>
     );

@@ -20,6 +20,10 @@ export interface Artwork {
   description: string;
   image_url: string;
   image_urls: string[];
+  /** Photos of the destroyed piece (shown in public gallery instead of originals). */
+  destroyed_image_urls: string[];
+  /** Test / Stripe test-mode sales — excluded from lifetime revenue + public gallery. */
+  is_test: boolean;
   start_price_cents: number;
   live_at: string | null;
   duration_ms: number;
@@ -31,6 +35,16 @@ export interface Artwork {
   livestream_url: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface GalleryArtwork {
+  id: string;
+  title: string;
+  description: string;
+  status: ArtworkStatus;
+  /** Images to show publicly (destroyed photos when destroyed; else originals). */
+  images: string[];
+  isDestroyed: boolean;
 }
 
 export interface CheckoutSessionRow {
@@ -75,10 +89,15 @@ export function normalizeArtwork(row: Artwork): Artwork {
       : row.image_url
         ? [row.image_url]
         : [];
+  const destroyed = Array.isArray(row.destroyed_image_urls)
+    ? row.destroyed_image_urls.filter(Boolean)
+    : [];
   return {
     ...row,
     image_urls: urls,
     image_url: urls[0] ?? row.image_url ?? "/artwork-placeholder.svg",
+    destroyed_image_urls: destroyed,
+    is_test: Boolean(row.is_test),
   };
 }
 
@@ -87,4 +106,17 @@ export function galleryUrls(artwork: Artwork): string[] {
   return normalized.image_urls.length > 0
     ? normalized.image_urls
     : [normalized.image_url];
+}
+
+export function isDestroyedStatus(status: ArtworkStatus): boolean {
+  return status === "destroyed" || status === "auto_destroyed";
+}
+
+/** Public archive images: destroyed pieces only show post-destruction photos. */
+export function publicArchiveImages(artwork: Artwork): string[] {
+  const normalized = normalizeArtwork(artwork);
+  if (isDestroyedStatus(normalized.status)) {
+    return normalized.destroyed_image_urls;
+  }
+  return galleryUrls(normalized);
 }

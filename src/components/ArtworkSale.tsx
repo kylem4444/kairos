@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { STATIC_ARTWORK_DESCRIPTION } from "@/lib/copy";
 import type { ArtworkPublicView, Outcome } from "@/lib/types";
@@ -10,6 +11,11 @@ import { ActionButtons } from "./ActionButtons";
 import { EmbeddedCheckout } from "./EmbeddedCheckout";
 import { LivestreamEmbed } from "./LivestreamEmbed";
 import { PriceDisplay } from "./PriceDisplay";
+
+function artworkDescription(artwork: ArtworkPublicView["artwork"]): string {
+  const text = artwork.description?.trim();
+  return text || STATIC_ARTWORK_DESCRIPTION;
+}
 
 type Banner =
   | { kind: "info"; text: string }
@@ -213,7 +219,7 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
       <section className="panel">
         <p className="brand">kairos</p>
         <h1 className="title">{artwork.title}</h1>
-        <p className="lede">{STATIC_ARTWORK_DESCRIPTION}</p>
+        <p className="lede">{artworkDescription(artwork)}</p>
 
         {isLive ? (
           <PriceDisplay
@@ -306,6 +312,10 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
             page so you can watch the price and pay when you want.
           </p>
         ) : null}
+
+        <p className="gallery-link">
+          <Link href="/gallery">Gallery</Link>
+        </p>
       </section>
     </main>
   );

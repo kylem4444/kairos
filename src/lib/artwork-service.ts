@@ -1,5 +1,6 @@
 import { STATIC_ARTWORK_DESCRIPTION } from "./copy";
 import {
+  demoAppendDestroyedImages,
   demoAppendImages,
   demoClaimArtwork,
   demoCreateArtwork,
@@ -10,6 +11,7 @@ import {
   demoGetSession,
   demoGoLive,
   demoHasLiveArtwork,
+  demoListArchiveArtworks,
   demoListArtworks,
   demoListOpenSessions,
   demoLogCheckoutSession,
@@ -31,9 +33,14 @@ import type {
   Artwork,
   ArtworkPublicView,
   CheckoutSessionRow,
+  GalleryArtwork,
   Outcome,
 } from "./types";
-import { normalizeArtwork } from "./types";
+import {
+  isDestroyedStatus,
+  normalizeArtwork,
+  publicArchiveImages,
+} from "./types";
 
 export function isDemoMode(): boolean {
   return (
@@ -172,6 +179,8 @@ export async function createArtwork(input: {
       description: input.description ?? STATIC_ARTWORK_DESCRIPTION,
       image_url: urls[0],
       image_urls: urls,
+      destroyed_image_urls: [],
+      is_test: false,
       start_price_cents: input.start_price_cents ?? START_PRICE_CENTS,
       duration_ms: input.duration_ms ?? WEEK_MS,
       status: "draft",
@@ -206,6 +215,8 @@ export async function updateArtwork(
     description?: string;
     image_url?: string;
     image_urls?: string[];
+    destroyed_image_urls?: string[];
+    is_test?: boolean;
     start_price_cents?: number;
     duration_ms?: number;
     livestream_url?: string | null;
@@ -224,6 +235,10 @@ export async function updateArtwork(
   if (patch.duration_ms !== undefined) updates.duration_ms = patch.duration_ms;
   if (patch.livestream_url !== undefined) {
     updates.livestream_url = patch.livestream_url;
+  }
+  if (patch.is_test !== undefined) updates.is_test = patch.is_test;
+  if (patch.destroyed_image_urls !== undefined) {
+    updates.destroyed_image_urls = patch.destroyed_image_urls;
   }
   if (patch.image_urls !== undefined) {
     updates.image_urls = patch.image_urls;
@@ -258,6 +273,47 @@ export async function appendArtworkImages(
   if (!existing) return null;
   const merged = [...existing.image_urls, ...urls];
   return updateArtwork(id, { image_urls: merged });
+}
+
+export async function appendDestroyedImages(
+  id: string,
+  urls: string[],
+): Promise<Artwork | null> {
+  if (urls.length === 0) return getArtworkById(id);
+
+  if (isDemoMode()) {
+    return demoAppendDestroyedImages(id, urls);
+  }
+
+  const existing = await getArtworkById(id);
+  if (!existing) return null;
+  const merged = [...existing.destroyed_image_urls, ...urls];
+  return updateArtwork(id, { destroyed_image_urls: merged });
+}
+
+export async function listArchiveArtworks(): Promise<GalleryArtwork[]> {
+  const rows = isDemoMode()
+    ? demoListArchiveArtworks()
+    : await (async () => {
+        const supabase = getSupabaseAdmin();
+        const { data, error } = await supabase
+          .from("artworks")
+          .select("*")
+          .eq("is_test", false)
+          .in("status", ["purchased", "destroyed", "auto_destroyed"])
+          .order("settled_at", { ascending: false });
+        if (error) throw error;
+        return (data ?? []).map((row) => normalizeArtwork(row as Artwork));
+      })();
+
+  return rows.map((artwork) => ({
+    id: artwork.id,
+    title: artwork.title,
+    description: artwork.description ?? "",
+    status: artwork.status,
+    images: publicArchiveImages(artwork),
+    isDestroyed: isDestroyedStatus(artwork.status),
+  }));
 }
 
 export async function hasLiveArtwork(excludeId?: string): Promise<boolean> {
@@ -312,12 +368,14 @@ export async function claimArtwork(input: {
   sessionId: string;
   outcome: Outcome;
   amountCents: number;
+  isTest?: boolean;
 }): Promise<{ claimed: Artwork | null; alreadySettled: boolean }> {
   if (isDemoMode()) {
     return demoClaimArtwork({
       sessionId: input.sessionId,
       outcome: input.outcome,
       amountCents: input.amountCents,
+      isTest: input.isTest ?? true,
     });
   }
 
@@ -332,6 +390,7 @@ export async function claimArtwork(input: {
       settled_at: new Date().toISOString(),
       settled_amount_cents: input.amountCents,
       winning_session_id: input.sessionId,
+      is_test: Boolean(input.isTest),
     })
     .eq("id", input.artworkId)
     .eq("status", "live")

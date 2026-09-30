@@ -6,7 +6,11 @@ import {
   listOpenSessions,
   markSessionsExpired,
 } from "@/lib/artwork-service";
-import { getStripe, isStripeConfigured } from "@/lib/stripe";
+import {
+  getStripe,
+  isStripeConfigured,
+  isStripeTestMode,
+} from "@/lib/stripe";
 import type { Outcome } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -74,6 +78,7 @@ async function handlePaymentIntentSucceeded(
     sessionId: paymentIntent.id,
     outcome,
     amountCents,
+    isTest: isStripeTestMode(),
   });
 
   if (claimed) {

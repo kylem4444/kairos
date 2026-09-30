@@ -98,12 +98,13 @@ export async function POST(request: NextRequest) {
         amount_cents: amountCents,
       });
 
-      const { claimed, alreadySettled } = await claimArtwork({
-        artworkId: artwork.id,
-        sessionId: fakeSessionId,
-        outcome: outcome as Outcome,
-        amountCents,
-      });
+        const { claimed, alreadySettled } = await claimArtwork({
+          artworkId: artwork.id,
+          sessionId: fakeSessionId,
+          outcome: outcome as Outcome,
+          amountCents,
+          isTest: true,
+        });
 
       if (claimed) {
         const open = await listOpenSessions(artwork.id);

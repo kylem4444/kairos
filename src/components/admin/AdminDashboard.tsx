@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { AdminAnalytics, Artwork } from "@/lib/types";
+import { isDestroyedStatus } from "@/lib/types";
 import { formatUsdFromCents } from "@/lib/price";
 
 type SessionState = {
@@ -241,6 +242,10 @@ function AnalyticsPanel({
       <h2 className="admin-section-title admin-section-title-center">
         Overview
       </h2>
+      <p className="admin-muted admin-overview-note">
+        Revenue and completed sales exclude test pieces (Stripe test mode or
+        marked as test).
+      </p>
       <div className="admin-stats">
         <Stat
           label="Lifetime revenue"
@@ -302,6 +307,8 @@ function ArtworkList({
   onNotice: (msg: string) => void;
 }) {
   const [creating, setCreating] = useState(false);
+  const real = artworks.filter((a) => !a.is_test);
+  const tests = artworks.filter((a) => a.is_test);
 
   async function createDraft() {
     setCreating(true);
@@ -323,37 +330,82 @@ function ArtworkList({
   }
 
   return (
-    <section className="admin-panel">
-      <div className="admin-row">
-        <h2 className="admin-section-title">Artworks</h2>
-        <button
-          type="button"
-          className="btn btn-purchase"
-          disabled={creating}
-          onClick={() => void createDraft()}
-        >
-          {creating ? "Creating…" : "New draft"}
-        </button>
-      </div>
-      <ul className="admin-list">
-        {artworks.map((a) => (
-          <li key={a.id}>
-            <button
-              type="button"
-              className={
-                selectedId === a.id
-                  ? "admin-list-item admin-list-item-active"
-                  : "admin-list-item"
-              }
-              onClick={() => onSelect(a.id)}
-            >
-              <span className="admin-list-title">{a.title}</span>
-              <span className="admin-list-meta">{a.status}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <div className="admin-list-stack">
+      <section className="admin-panel">
+        <div className="admin-row">
+          <h2 className="admin-section-title">Artworks</h2>
+          <button
+            type="button"
+            className="btn btn-purchase"
+            disabled={creating}
+            onClick={() => void createDraft()}
+          >
+            {creating ? "Creating…" : "New draft"}
+          </button>
+        </div>
+        {real.length === 0 ? (
+          <p className="admin-muted">No real artworks yet.</p>
+        ) : (
+          <ul className="admin-list">
+            {real.map((a) => (
+              <ArtworkListItem
+                key={a.id}
+                artwork={a}
+                selected={selectedId === a.id}
+                onSelect={onSelect}
+              />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="admin-panel">
+        <h2 className="admin-section-title">Tests</h2>
+        <p className="admin-muted">
+          Stripe test-mode or marked tests. Excluded from lifetime revenue and
+          the public gallery.
+        </p>
+        {tests.length === 0 ? (
+          <p className="admin-muted">No test pieces.</p>
+        ) : (
+          <ul className="admin-list">
+            {tests.map((a) => (
+              <ArtworkListItem
+                key={a.id}
+                artwork={a}
+                selected={selectedId === a.id}
+                onSelect={onSelect}
+              />
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function ArtworkListItem({
+  artwork,
+  selected,
+  onSelect,
+}: {
+  artwork: Artwork;
+  selected: boolean;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        className={
+          selected ? "admin-list-item admin-list-item-active" : "admin-list-item"
+        }
+        onClick={() => onSelect(artwork.id)}
+      >
+        <span className="admin-list-title">{artwork.title}</span>
+        <span className="admin-list-meta">{artwork.status}</span>
+      </button>
+    </li>
   );
 }
 
@@ -369,6 +421,7 @@ function ArtworkEditor({
   onNotice: (msg: string) => void;
 }) {
   const [title, setTitle] = useState(artwork.title);
+  const [description, setDescription] = useState(artwork.description ?? "");
   const [startPrice, setStartPrice] = useState(
     String(artwork.start_price_cents / 100),
   );
@@ -380,8 +433,11 @@ function ArtworkEditor({
   );
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingDestroyed, setUploadingDestroyed] = useState(false);
   const [goingLive, setGoingLive] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [togglingTest, setTogglingTest] = useState(false);
+  const destroyed = isDestroyedStatus(artwork.status);
 
   async function save() {
     setSaving(true);
@@ -393,6 +449,7 @@ function ArtworkEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
+          description,
           start_price_cents: Math.round(priceDollars * 100),
           duration_ms: Math.round(days * 24 * 60 * 60 * 1000),
           livestream_url: livestreamUrl.trim() || null,
@@ -451,12 +508,17 @@ function ArtworkEditor({
     }
   }
 
-  async function onFilesSelected(files: FileList | null) {
+  async function onFilesSelected(
+    files: FileList | null,
+    kind: "artwork" | "destroyed" = "artwork",
+  ) {
     if (!files || files.length === 0) return;
-    setUploading(true);
+    if (kind === "destroyed") setUploadingDestroyed(true);
+    else setUploading(true);
     try {
       const form = new FormData();
       form.set("artworkId", artwork.id);
+      form.set("kind", kind);
       for (const file of Array.from(files)) {
         form.append("files", file);
       }
@@ -466,13 +528,18 @@ function ArtworkEditor({
       });
       const data = await res.json();
       if (!res.ok) {
-        onNotice(data.error ?? "Upload failed");
+        onNotice(data.message ?? data.error ?? "Upload failed");
         return;
       }
-      onNotice(`Uploaded ${data.urls?.length ?? 0} photo(s).`);
+      onNotice(
+        kind === "destroyed"
+          ? `Uploaded ${data.urls?.length ?? 0} destroyed photo(s).`
+          : `Uploaded ${data.urls?.length ?? 0} photo(s).`,
+      );
       await onUpdated();
     } finally {
-      setUploading(false);
+      if (kind === "destroyed") setUploadingDestroyed(false);
+      else setUploading(false);
     }
   }
 
@@ -493,11 +560,53 @@ function ArtworkEditor({
     await onUpdated();
   }
 
+  async function removeDestroyedImage(url: string) {
+    const next = artwork.destroyed_image_urls.filter((u) => u !== url);
+    const res = await fetch(`/api/admin/artworks/${artwork.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ destroyed_image_urls: next }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      onNotice(data.error ?? "Could not remove image");
+      return;
+    }
+    await onUpdated();
+  }
+
+  async function toggleTest() {
+    setTogglingTest(true);
+    try {
+      const res = await fetch(`/api/admin/artworks/${artwork.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_test: !artwork.is_test }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        onNotice(data.error ?? "Could not update test flag");
+        return;
+      }
+      onNotice(
+        artwork.is_test
+          ? "Marked as real (counts toward revenue)."
+          : "Marked as test (excluded from revenue).",
+      );
+      await onUpdated();
+    } finally {
+      setTogglingTest(false);
+    }
+  }
+
   return (
     <section className="admin-panel">
       <div className="admin-row">
         <h2 className="admin-section-title">Edit</h2>
-        <span className="admin-list-meta">{artwork.status}</span>
+        <span className="admin-list-meta">
+          {artwork.status}
+          {artwork.is_test ? " · test" : ""}
+        </span>
       </div>
 
       <label className="admin-label" htmlFor="title">
@@ -508,6 +617,18 @@ function ArtworkEditor({
         className="admin-input"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
+      />
+
+      <label className="admin-label" htmlFor="description">
+        Description
+      </label>
+      <textarea
+        id="description"
+        className="admin-textarea"
+        rows={4}
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Shown on the sale page and in the gallery"
       />
 
       <div className="admin-fields">
@@ -554,38 +675,77 @@ function ArtworkEditor({
         placeholder="https://www.youtube.com/watch?v=…"
       />
 
-      <div className="admin-photos">
-        <p className="admin-label">Photos</p>
-        <div className="admin-thumbs">
-          {artwork.image_urls.map((url) => (
-            <div key={url} className="admin-thumb">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" />
-              <button
-                type="button"
-                className="admin-thumb-remove"
-                onClick={() => void removeImage(url)}
-              >
-                Remove
-              </button>
-            </div>
-          ))}
+      {!destroyed ? (
+        <div className="admin-photos">
+          <p className="admin-label">Photos</p>
+          <div className="admin-thumbs">
+            {artwork.image_urls.map((url) => (
+              <div key={url} className="admin-thumb">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="" />
+                <button
+                  type="button"
+                  className="admin-thumb-remove"
+                  onClick={() => void removeImage(url)}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+          <label className="btn admin-upload-btn">
+            {uploading ? "Uploading…" : "Add photos"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              hidden
+              disabled={uploading}
+              onChange={(e) => {
+                void onFilesSelected(e.target.files, "artwork");
+                e.target.value = "";
+              }}
+            />
+          </label>
         </div>
-        <label className="btn admin-upload-btn">
-          {uploading ? "Uploading…" : "Add photos"}
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            multiple
-            hidden
-            disabled={uploading}
-            onChange={(e) => {
-              void onFilesSelected(e.target.files);
-              e.target.value = "";
-            }}
-          />
-        </label>
-      </div>
+      ) : (
+        <div className="admin-photos">
+          <p className="admin-label">Destroyed photos</p>
+          <p className="admin-muted">
+            Original sale photos stay hidden on the public gallery. Upload
+            post-destruction images here.
+          </p>
+          <div className="admin-thumbs">
+            {artwork.destroyed_image_urls.map((url) => (
+              <div key={url} className="admin-thumb">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="" />
+                <button
+                  type="button"
+                  className="admin-thumb-remove"
+                  onClick={() => void removeDestroyedImage(url)}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+          <label className="btn admin-upload-btn">
+            {uploadingDestroyed ? "Uploading…" : "Add destroyed photos"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              hidden
+              disabled={uploadingDestroyed}
+              onChange={(e) => {
+                void onFilesSelected(e.target.files, "destroyed");
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+      )}
 
       <div className="checkout-actions">
         <button
@@ -616,13 +776,26 @@ function ArtworkEditor({
             </button>
           </>
         ) : null}
+        <button
+          type="button"
+          className="btn"
+          disabled={togglingTest}
+          onClick={() => void toggleTest()}
+        >
+          {togglingTest
+            ? "Updating…"
+            : artwork.is_test
+              ? "Mark as real"
+              : "Mark as test"}
+        </button>
       </div>
 
-      {artwork.status === "purchased" || artwork.status === "destroyed" ? (
+      {artwork.status === "purchased" || destroyed ? (
         <p className="admin-muted">
           Settled{" "}
-          {formatUsdFromCents(artwork.settled_amount_cents ?? 0)} (
-          {artwork.settled_outcome})
+          {formatUsdFromCents(artwork.settled_amount_cents ?? 0)}
+          {artwork.settled_outcome ? ` (${artwork.settled_outcome})` : ""}
+          {artwork.is_test ? " · test — not in revenue" : ""}
         </p>
       ) : null}
     </section>

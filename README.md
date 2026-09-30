@@ -188,14 +188,16 @@ src/app/api/admin/*                 Dashboard APIs
 src/app/api/analytics/collect       Public allowlisted events
 supabase/schema.sql                 Database
 supabase/admin_migration.sql        Admin extras for existing DBs
+supabase/gallery_migration.sql      is_test + destroyed photos
 supabase/seed.sql                   Draft artwork (go live via admin)
+src/app/gallery                     Public archive (titles + pictures)
 ```
 
 ---
 
 ## Grokbot ops checklist (Supabase / Vercel / admin)
 
-1. **Supabase SQL** — If the project already ran older schema: run `supabase/admin_migration.sql`. Fresh project: run `schema.sql`, `seed.sql`, then the Storage section of `admin_migration.sql` (or create public bucket `artwork` with image mime types).
+1. **Supabase SQL** — If the project already ran older schema: run `supabase/admin_migration.sql`, then `supabase/gallery_migration.sql` (`is_test`, `destroyed_image_urls`). Fresh project: run `schema.sql`, `seed.sql`, then the Storage section of `admin_migration.sql` (or create public bucket `artwork` with image mime types). In `/dashboard`, **Mark as test** any past Stripe test sales so they leave lifetime revenue and the public gallery.
 2. **Vercel env** — Set all vars from `.env.example`, especially `ADMIN_SECRET`, `ADMIN_PASSWORD`, Supabase, Stripe, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET`. Redeploy after changing `NEXT_PUBLIC_*`.
 3. **Stripe webhook** — `https://YOUR_DOMAIN/api/webhook/stripe` → `payment_intent.succeeded`.
 4. **Smoke `/dashboard`** — open only via URL (no site links). Log in with `ADMIN_PASSWORD`. Create/edit artwork, upload photos, start countdown. Confirm public `/` shows the live piece and gallery.

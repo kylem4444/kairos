@@ -20,6 +20,8 @@ create table public.artworks (
   description text not null default '',
   image_url text not null,
   image_urls text[] not null default '{}',
+  destroyed_image_urls text[] not null default '{}',
+  is_test boolean not null default false,
   start_price_cents bigint not null default 100000000,
   live_at timestamptz,
   duration_ms bigint not null default 604800000, -- 7 days

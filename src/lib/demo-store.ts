@@ -31,6 +31,8 @@ function createFreshDemoArtwork(): Artwork {
       "/artwork/kairos-1-full.png",
       "/artwork/kairos-1-detail.png",
     ],
+    destroyed_image_urls: [],
+    is_test: true,
     title: "Untitled No. 1",
     description: STATIC_ARTWORK_DESCRIPTION,
     start_price_cents: START_PRICE_CENTS,
@@ -111,6 +113,8 @@ export function demoCreateArtwork(input: {
     description: input.description ?? STATIC_ARTWORK_DESCRIPTION,
     image_url: urls[0]!,
     image_urls: urls,
+    destroyed_image_urls: [],
+    is_test: false,
     start_price_cents: input.start_price_cents ?? START_PRICE_CENTS,
     live_at: null,
     duration_ms: input.duration_ms ?? WEEK_MS,
@@ -145,6 +149,8 @@ export function demoUpdateArtwork(
       | "settled_at"
       | "settled_amount_cents"
       | "winning_session_id"
+      | "is_test"
+      | "destroyed_image_urls"
     >
   >,
 ): Artwork | null {
@@ -205,15 +211,39 @@ export function demoHasLiveArtwork(excludeId?: string): boolean {
 export function demoLifetimeRevenueCents(): number {
   ensureSeeded();
   return [...artworks.values()]
-    .filter((a) => a.status === "purchased" || a.status === "destroyed")
+    .filter(
+      (a) =>
+        !a.is_test &&
+        (a.status === "purchased" || a.status === "destroyed"),
+    )
     .reduce((sum, a) => sum + (a.settled_amount_cents ?? 0), 0);
 }
 
 export function demoCompletedSalesCount(): number {
   ensureSeeded();
   return [...artworks.values()].filter(
-    (a) => a.status === "purchased" || a.status === "destroyed",
+    (a) =>
+      !a.is_test &&
+      (a.status === "purchased" || a.status === "destroyed"),
   ).length;
+}
+
+export function demoListArchiveArtworks(): Artwork[] {
+  ensureSeeded();
+  return [...artworks.values()]
+    .filter(
+      (a) =>
+        !a.is_test &&
+        (a.status === "purchased" ||
+          a.status === "destroyed" ||
+          a.status === "auto_destroyed"),
+    )
+    .map((a) => structuredClone(normalizeArtwork(a)))
+    .sort((a, b) => {
+      const aT = a.settled_at ? new Date(a.settled_at).getTime() : 0;
+      const bT = b.settled_at ? new Date(b.settled_at).getTime() : 0;
+      return bT - aT;
+    });
 }
 
 export function demoTrackEvent(input: {
@@ -309,6 +339,7 @@ export function demoClaimArtwork(input: {
   sessionId: string;
   outcome: Outcome;
   amountCents: number;
+  isTest?: boolean;
 }): { claimed: Artwork | null; alreadySettled: boolean } {
   ensureSeeded();
   const live = [...artworks.values()].find((a) => a.status === "live");
@@ -323,6 +354,7 @@ export function demoClaimArtwork(input: {
     settled_at: new Date().toISOString(),
     settled_amount_cents: input.amountCents,
     winning_session_id: input.sessionId,
+    is_test: input.isTest ?? true,
     updated_at: new Date().toISOString(),
   });
   artworks.set(live.id, updated);
@@ -368,6 +400,16 @@ export function demoAppendImages(
     image_urls: merged,
     image_url: merged[0],
   });
+}
+
+export function demoAppendDestroyedImages(
+  artworkId: string,
+  urls: string[],
+): Artwork | null {
+  const existing = artworks.get(artworkId);
+  if (!existing) return null;
+  const merged = [...(existing.destroyed_image_urls ?? []), ...urls];
+  return demoUpdateArtwork(artworkId, { destroyed_image_urls: merged });
 }
 
 /** Only drafts can be deleted. */

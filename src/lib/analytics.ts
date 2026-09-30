@@ -109,9 +109,11 @@ export async function getAdminAnalytics(): Promise<AdminAnalytics> {
   }
 
   const supabase = getSupabaseAdmin();
+  // Lifetime revenue: real settled sales only (exclude Stripe test / marked tests)
   const { data: settled, error: settledError } = await supabase
     .from("artworks")
     .select("settled_amount_cents, status")
+    .eq("is_test", false)
     .in("status", ["purchased", "destroyed"]);
 
   if (settledError) throw settledError;

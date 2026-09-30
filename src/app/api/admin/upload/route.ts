@@ -7,8 +7,11 @@ import {
 } from "@/lib/admin-auth";
 import {
   appendArtworkImages,
+  appendDestroyedImages,
+  getArtworkById,
   uploadArtworkImage,
 } from "@/lib/artwork-service";
+import { isDestroyedStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +22,7 @@ export async function POST(request: NextRequest) {
   try {
     const form = await request.formData();
     const artworkId = String(form.get("artworkId") ?? "");
+    const kind = String(form.get("kind") ?? "artwork");
     const files = form
       .getAll("files")
       .filter((f): f is File => f instanceof File);
@@ -33,6 +37,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "files required" }, { status: 400 });
     }
 
+    if (kind === "destroyed") {
+      const existing = await getArtworkById(artworkId);
+      if (!existing || !isDestroyedStatus(existing.status)) {
+        return NextResponse.json(
+          {
+            error: "not_destroyed",
+            message: "Destroyed photos can only be added to destroyed pieces.",
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     const urls: string[] = [];
     for (const file of files) {
       const buffer = Buffer.from(await file.arrayBuffer());
@@ -44,7 +61,11 @@ export async function POST(request: NextRequest) {
       urls.push(url);
     }
 
-    const artwork = await appendArtworkImages(artworkId, urls);
+    const artwork =
+      kind === "destroyed"
+        ? await appendDestroyedImages(artworkId, urls)
+        : await appendArtworkImages(artworkId, urls);
+
     if (!artwork) {
       return NextResponse.json({ error: "Artwork not found" }, { status: 404 });
     }

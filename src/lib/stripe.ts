@@ -6,6 +6,12 @@ export function isStripeConfigured(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY);
 }
 
+/** True when using Stripe test-mode secret keys (sk_test_…). */
+export function isStripeTestMode(): boolean {
+  const key = process.env.STRIPE_SECRET_KEY ?? "";
+  return key.startsWith("sk_test_");
+}
+
 export function getStripe(): Stripe {
   if (!isStripeConfigured()) {
     throw new Error("Stripe is not configured");
