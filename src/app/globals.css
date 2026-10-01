@@ -445,6 +445,23 @@ body {
   text-align: center;
 }
 
+.admin-migration {
+  gap: 1rem;
+}
+
+.admin-sql {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--bg) 92%, var(--ink));
+  border: 1px solid var(--line);
+  white-space: pre-wrap;
+}
+
 .admin-grid {
   display: grid;
   grid-template-columns: 0.9fr 1.1fr;
