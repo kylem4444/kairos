@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
-import { Libre_Franklin } from "next/font/google";
+import { Bodoni_Moda, Libre_Franklin } from "next/font/google";
 import "./globals.css";
 
-/** Serith — preview for kairos branding. Personal-use license; need commercial license for live sale. */
-const display = localFont({
-  src: "../fonts/Serith.otf",
+const display = Bodoni_Moda({
   variable: "--font-display",
-  display: "swap",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
 });
 
 const body = Libre_Franklin({
@@ -16,11 +14,11 @@ const body = Libre_Franklin({
 });
 
 export const metadata: Metadata = {
-  title: "kairos — one artwork. one week. one million to zero.",
+  title: "Kairos — one artwork. one week. one million to zero.",
   description:
     "A single artwork for sale. The price decays from $1,000,000 to $0 over seven days. Purchase it or destroy it. If the price hits zero, it is destroyed on livestream.",
   openGraph: {
-    title: "kairos",
+    title: "Kairos",
     description:
       "One artwork. The price falls for seven days. Purchase or destroy.",
     type: "website",

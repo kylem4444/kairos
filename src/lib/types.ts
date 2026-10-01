@@ -79,6 +79,8 @@ export interface AdminAnalytics {
   pageViews: { all: number; last7d: number; last30d: number };
   checkoutOpens: { all: number; last7d: number; last30d: number };
   paymentSucceeded: { all: number; last7d: number; last30d: number };
+  /** True when is_test column is missing — run gallery_migration.sql */
+  migrationNeeded?: boolean;
 }
 
 /** Normalize DB/demo rows so gallery always has a usable list. */

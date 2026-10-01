@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { STATIC_ARTWORK_DESCRIPTION } from "@/lib/copy";
+import { HOMEPAGE_LEDE, isHomepageLedeText } from "@/lib/copy";
 import type { ArtworkPublicView, Outcome } from "@/lib/types";
 import { galleryUrls } from "@/lib/types";
 import { formatUsdFromCents } from "@/lib/price";
@@ -12,9 +12,11 @@ import { EmbeddedCheckout } from "./EmbeddedCheckout";
 import { LivestreamEmbed } from "./LivestreamEmbed";
 import { PriceDisplay } from "./PriceDisplay";
 
-function artworkDescription(artwork: ArtworkPublicView["artwork"]): string {
+/** Per-artwork details (dimensions, etc.) — never the shared homepage lede. */
+function artworkDetails(artwork: ArtworkPublicView["artwork"]): string | null {
   const text = artwork.description?.trim();
-  return text || STATIC_ARTWORK_DESCRIPTION;
+  if (!text || isHomepageLedeText(text)) return null;
+  return text;
 }
 
 type Banner =
@@ -217,9 +219,12 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
       </div>
 
       <section className="panel">
-        <p className="brand">kairos</p>
+        <p className="brand">Kairos</p>
         <h1 className="title">{artwork.title}</h1>
-        <p className="lede">{artworkDescription(artwork)}</p>
+        <p className="lede">{HOMEPAGE_LEDE}</p>
+        {artworkDetails(artwork) ? (
+          <p className="artwork-details">{artworkDetails(artwork)}</p>
+        ) : null}
 
         {isLive ? (
           <PriceDisplay

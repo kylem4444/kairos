@@ -110,13 +110,33 @@ export async function getAdminAnalytics(): Promise<AdminAnalytics> {
 
   const supabase = getSupabaseAdmin();
   // Lifetime revenue: real settled sales only (exclude Stripe test / marked tests)
-  const { data: settled, error: settledError } = await supabase
+  let settled:
+    | { settled_amount_cents: number | null; status: string }[]
+    | null = null;
+  let migrationNeeded = false;
+
+  const withTestFilter = await supabase
     .from("artworks")
     .select("settled_amount_cents, status")
     .eq("is_test", false)
     .in("status", ["purchased", "destroyed"]);
 
-  if (settledError) throw settledError;
+  if (withTestFilter.error) {
+    // Column missing until gallery_migration.sql is applied
+    console.warn(
+      "analytics is_test filter failed; falling back",
+      withTestFilter.error.message,
+    );
+    migrationNeeded = true;
+    const fallback = await supabase
+      .from("artworks")
+      .select("settled_amount_cents, status")
+      .in("status", ["purchased", "destroyed"]);
+    if (fallback.error) throw fallback.error;
+    settled = fallback.data;
+  } else {
+    settled = withTestFilter.data;
+  }
 
   const lifetimeRevenueCents = (settled ?? []).reduce(
     (sum, row) => sum + (row.settled_amount_cents ?? 0),
@@ -152,5 +172,6 @@ export async function getAdminAnalytics(): Promise<AdminAnalytics> {
     pageViews: { all: pageAll, last7d: page7, last30d: page30 },
     checkoutOpens: { all: checkoutAll, last7d: checkout7, last30d: checkout30 },
     paymentSucceeded: { all: payAll, last7d: pay7, last30d: pay30 },
+    migrationNeeded,
   };
 }

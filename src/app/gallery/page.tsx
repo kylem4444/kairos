@@ -5,8 +5,8 @@ import { GalleryGrid } from "@/components/GalleryGrid";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "kairos — gallery",
-  description: "Past works that have passed through kairos.",
+  title: "Kairos — gallery",
+  description: "Past works that have passed through Kairos.",
 };
 
 export default async function GalleryPage() {
@@ -16,12 +16,10 @@ export default async function GalleryPage() {
     <main className="gallery-page">
       <header className="gallery-header">
         <Link href="/" className="brand gallery-brand">
-          kairos
+          Kairos
         </Link>
         <p className="gallery-kicker">Gallery</p>
-        <p className="gallery-lede">
-          Works that have passed through kairos.
-        </p>
+        <p className="gallery-lede">Works that have passed through Kairos.</p>
       </header>
 
       {artworks.length === 0 ? (

@@ -16,7 +16,7 @@ insert into public.artworks (
   status
 ) values (
   'Untitled No. 1',
-  'One work. One week. The price falls from one million dollars to zero. Purchase it, or destroy it, for whatever the clock shows. If nobody acts, it is destroyed on livestream when the price hits zero.',
+  'Oil on canvas · 48 × 60 in',
   '/artwork/kairos-1-full.png',
   array[
     '/artwork/kairos-1-full.png',

@@ -12,7 +12,7 @@ export default async function HomePage() {
     return (
       <main className="empty">
         <div>
-          <p className="brand">kairos</p>
+          <p className="brand">Kairos</p>
           <p className="rules">No artwork is live right now.</p>
           <p className="gallery-link">
             <Link href="/gallery">Gallery</Link>

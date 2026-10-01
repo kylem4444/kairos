@@ -1,4 +1,3 @@
-import { STATIC_ARTWORK_DESCRIPTION } from "./copy";
 import {
   demoAppendDestroyedImages,
   demoAppendImages,
@@ -176,7 +175,7 @@ export async function createArtwork(input: {
     .from("artworks")
     .insert({
       title: input.title,
-      description: input.description ?? STATIC_ARTWORK_DESCRIPTION,
+      description: input.description ?? "",
       image_url: urls[0],
       image_urls: urls,
       destroyed_image_urls: [],
@@ -296,14 +295,28 @@ export async function listArchiveArtworks(): Promise<GalleryArtwork[]> {
     ? demoListArchiveArtworks()
     : await (async () => {
         const supabase = getSupabaseAdmin();
-        const { data, error } = await supabase
+        const filtered = await supabase
           .from("artworks")
           .select("*")
           .eq("is_test", false)
           .in("status", ["purchased", "destroyed", "auto_destroyed"])
           .order("settled_at", { ascending: false });
-        if (error) throw error;
-        return (data ?? []).map((row) => normalizeArtwork(row as Artwork));
+
+        if (filtered.error) {
+          const fallback = await supabase
+            .from("artworks")
+            .select("*")
+            .in("status", ["purchased", "destroyed", "auto_destroyed"])
+            .order("settled_at", { ascending: false });
+          if (fallback.error) throw fallback.error;
+          return (fallback.data ?? []).map((row) =>
+            normalizeArtwork(row as Artwork),
+          );
+        }
+
+        return (filtered.data ?? []).map((row) =>
+          normalizeArtwork(row as Artwork),
+        );
       })();
 
   return rows.map((artwork) => ({

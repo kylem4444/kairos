@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { isHomepageLedeText } from "@/lib/copy";
 import type { AdminAnalytics, Artwork } from "@/lib/types";
 import { isDestroyedStatus } from "@/lib/types";
 import { formatUsdFromCents } from "@/lib/price";
@@ -51,9 +52,26 @@ export function AdminDashboard() {
     if (artRes.ok) {
       const data = await artRes.json();
       setArtworks(data.artworks ?? []);
+    } else {
+      const data = await artRes.json().catch(() => ({}));
+      setNotice(data.message ?? data.error ?? "Failed to load artworks.");
     }
     if (analyticsRes.ok) {
-      setAnalytics(await analyticsRes.json());
+      const data = await analyticsRes.json();
+      setAnalytics(data);
+      if (data.migrationNeeded) {
+        setNotice(
+          "Database migration needed: run supabase/gallery_migration.sql in Supabase (adds is_test). Analytics are approximate until then.",
+        );
+      }
+    } else {
+      const data = await analyticsRes.json().catch(() => ({}));
+      setAnalytics(null);
+      setNotice(
+        data.message ??
+          data.error ??
+          "Analytics failed to load. Run supabase/gallery_migration.sql if you have not yet.",
+      );
     }
   }, []);
 
@@ -124,7 +142,7 @@ export function AdminDashboard() {
   if (!session.configured && process.env.NODE_ENV === "production") {
     return (
       <main className="admin-shell">
-        <p className="brand">kairos</p>
+        <p className="brand">Kairos</p>
         <p className="admin-muted">
           {session.message ?? "Admin is not configured."}
         </p>
@@ -135,7 +153,7 @@ export function AdminDashboard() {
   if (!session.authenticated) {
     return (
       <main className="admin-shell admin-login">
-        <p className="brand">kairos</p>
+        <p className="brand">Kairos</p>
         <h1 className="admin-title">Dashboard</h1>
         <form className="admin-login-form" onSubmit={(e) => void login(e)}>
           <label className="admin-label" htmlFor="admin-password">
@@ -167,7 +185,7 @@ export function AdminDashboard() {
     <main className="admin-shell">
       <header className="admin-header">
         <div>
-          <p className="brand">kairos</p>
+          <p className="brand">Kairos</p>
           <p className="admin-title">Dashboard</p>
           {session.demoMode ? (
             <p className="admin-muted">Demo mode — in-memory store</p>
@@ -203,9 +221,9 @@ export function AdminDashboard() {
           <ArtworkEditor
             key={selected.id}
             artwork={selected}
-            onUpdated={async () => {
+            onUpdated={async (message) => {
               await loadData();
-              setNotice("Saved.");
+              setNotice(message ?? "Saved.");
             }}
             onDeleted={async () => {
               setSelectedId(null);
@@ -416,12 +434,14 @@ function ArtworkEditor({
   onNotice,
 }: {
   artwork: Artwork;
-  onUpdated: () => void | Promise<void>;
+  onUpdated: (message?: string) => void | Promise<void>;
   onDeleted: () => void | Promise<void>;
   onNotice: (msg: string) => void;
 }) {
   const [title, setTitle] = useState(artwork.title);
-  const [description, setDescription] = useState(artwork.description ?? "");
+  const [description, setDescription] = useState(
+    isHomepageLedeText(artwork.description) ? "" : (artwork.description ?? ""),
+  );
   const [startPrice, setStartPrice] = useState(
     String(artwork.start_price_cents / 100),
   );
@@ -460,7 +480,7 @@ function ArtworkEditor({
         onNotice(data.error ?? "Save failed");
         return;
       }
-      await onUpdated();
+      await onUpdated("Saved.");
     } finally {
       setSaving(false);
     }
@@ -501,8 +521,7 @@ function ArtworkEditor({
         onNotice(data.message ?? data.error ?? "Could not go live");
         return;
       }
-      onNotice("Countdown started — artwork is live.");
-      await onUpdated();
+      await onUpdated("Countdown started — artwork is live.");
     } finally {
       setGoingLive(false);
     }
@@ -531,12 +550,11 @@ function ArtworkEditor({
         onNotice(data.message ?? data.error ?? "Upload failed");
         return;
       }
-      onNotice(
+      await onUpdated(
         kind === "destroyed"
           ? `Uploaded ${data.urls?.length ?? 0} destroyed photo(s).`
           : `Uploaded ${data.urls?.length ?? 0} photo(s).`,
       );
-      await onUpdated();
     } finally {
       if (kind === "destroyed") setUploadingDestroyed(false);
       else setUploading(false);
@@ -557,7 +575,7 @@ function ArtworkEditor({
       onNotice(data.error ?? "Could not remove image");
       return;
     }
-    await onUpdated();
+    await onUpdated("Photo removed.");
   }
 
   async function removeDestroyedImage(url: string) {
@@ -572,7 +590,7 @@ function ArtworkEditor({
       onNotice(data.error ?? "Could not remove image");
       return;
     }
-    await onUpdated();
+    await onUpdated("Destroyed photo removed.");
   }
 
   async function toggleTest() {
@@ -585,15 +603,18 @@ function ArtworkEditor({
       });
       const data = await res.json();
       if (!res.ok) {
-        onNotice(data.error ?? "Could not update test flag");
+        onNotice(
+          data.message ??
+            data.error ??
+            "Could not update test flag. Run supabase/gallery_migration.sql if is_test is missing.",
+        );
         return;
       }
-      onNotice(
+      await onUpdated(
         artwork.is_test
           ? "Marked as real (counts toward revenue)."
           : "Marked as test (excluded from revenue).",
       );
-      await onUpdated();
     } finally {
       setTogglingTest(false);
     }
@@ -620,15 +641,15 @@ function ArtworkEditor({
       />
 
       <label className="admin-label" htmlFor="description">
-        Description
+        Details
       </label>
       <textarea
         id="description"
         className="admin-textarea"
-        rows={4}
+        rows={3}
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        placeholder="Shown on the sale page and in the gallery"
+        placeholder="Dimensions, medium, year — shown under the shared homepage text and in the gallery"
       />
 
       <div className="admin-fields">

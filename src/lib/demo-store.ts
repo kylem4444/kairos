@@ -1,4 +1,3 @@
-import { STATIC_ARTWORK_DESCRIPTION } from "./copy";
 import { START_PRICE_CENTS, WEEK_MS } from "./price";
 import type {
   AnalyticsEvent,
@@ -34,7 +33,7 @@ function createFreshDemoArtwork(): Artwork {
     destroyed_image_urls: [],
     is_test: true,
     title: "Untitled No. 1",
-    description: STATIC_ARTWORK_DESCRIPTION,
+    description: "",
     start_price_cents: START_PRICE_CENTS,
     live_at: liveAt,
     duration_ms: WEEK_MS,
@@ -110,7 +109,7 @@ export function demoCreateArtwork(input: {
   const row = normalizeArtwork({
     id: crypto.randomUUID(),
     title: input.title,
-    description: input.description ?? STATIC_ARTWORK_DESCRIPTION,
+    description: input.description ?? "",
     image_url: urls[0]!,
     image_urls: urls,
     destroyed_image_urls: [],
