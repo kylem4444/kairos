@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { isHomepageLedeText } from "@/lib/copy";
-import { GALLERY_MIGRATION_SQL } from "@/lib/gallery-migration-sql";
 import type { AdminAnalytics, Artwork } from "@/lib/types";
 import { isDestroyedStatus } from "@/lib/types";
 import { formatUsdFromCents } from "@/lib/price";
@@ -25,9 +24,6 @@ export function AdminDashboard() {
   >(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [migrationNeeded, setMigrationNeeded] = useState(false);
-  const [migrating, setMigrating] = useState(false);
-  const [migrationSql, setMigrationSql] = useState(GALLERY_MIGRATION_SQL);
 
   const selected = artworks.find((a) => a.id === selectedId) ?? null;
 
@@ -63,46 +59,12 @@ export function AdminDashboard() {
     if (analyticsRes.ok) {
       const data = await analyticsRes.json();
       setAnalytics(data);
-      const needsMigration = Boolean(data.migrationNeeded);
-      setMigrationNeeded(needsMigration);
-      if (needsMigration) {
-        setNotice(
-          "Your database is missing the is_test column. Mark as test and accurate analytics will not work until you run the migration below.",
-        );
-      }
     } else {
       const data = await analyticsRes.json().catch(() => ({}));
       setAnalytics(null);
-      setMigrationNeeded(true);
-      setNotice(
-        data.message ??
-          data.error ??
-          "Analytics failed to load. Run the database migration below.",
-      );
+      setNotice(data.message ?? data.error ?? "Analytics failed to load.");
     }
   }, []);
-
-  async function runMigration() {
-    setMigrating(true);
-    try {
-      const res = await fetch("/api/admin/migrate", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (typeof data.sql === "string" && data.sql.trim()) {
-        setMigrationSql(data.sql);
-      }
-      if (!res.ok) {
-        setNotice(data.message ?? "Migration failed. Use the SQL below in Supabase.");
-        return;
-      }
-      setMigrationNeeded(false);
-      setNotice(data.message ?? "Migration applied.");
-      await loadData();
-    } catch {
-      setNotice("Network error running migration.");
-    } finally {
-      setMigrating(false);
-    }
-  }
 
   useEffect(() => {
     let cancelled = false;
@@ -226,44 +188,9 @@ export function AdminDashboard() {
       </header>
 
       {notice ? (
-        <p
-          className={`banner ${migrationNeeded ? "banner-error" : "banner-info"}`}
-          role="status"
-        >
+        <p className="banner banner-info" role="status">
           {notice}
         </p>
-      ) : null}
-
-      {migrationNeeded ? (
-        <section className="admin-panel admin-migration">
-          <h2 className="admin-section-title">Database migration required</h2>
-          <p className="admin-muted">
-            Mark as test writes an <code>is_test</code> column that is not in
-            your Supabase database yet. Click Run migration, or paste the SQL
-            into Supabase → SQL → New query → Run.
-          </p>
-          <div className="admin-actions">
-            <button
-              type="button"
-              className="btn btn-purchase"
-              disabled={migrating}
-              onClick={() => void runMigration()}
-            >
-              {migrating ? "Running…" : "Run migration"}
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => {
-                void navigator.clipboard.writeText(migrationSql);
-                setNotice("SQL copied. Paste it in Supabase SQL Editor and click Run.");
-              }}
-            >
-              Copy SQL
-            </button>
-          </div>
-          <pre className="admin-sql">{migrationSql}</pre>
-        </section>
       ) : null}
 
       <AnalyticsPanel analytics={analytics} />
@@ -285,7 +212,6 @@ export function AdminDashboard() {
           <ArtworkEditor
             key={selected.id}
             artwork={selected}
-            migrationNeeded={migrationNeeded}
             onUpdated={async (message) => {
               await loadData();
               setNotice(message ?? "Saved.");
@@ -494,13 +420,11 @@ function ArtworkListItem({
 
 function ArtworkEditor({
   artwork,
-  migrationNeeded,
   onUpdated,
   onDeleted,
   onNotice,
 }: {
   artwork: Artwork;
-  migrationNeeded: boolean;
   onUpdated: (message?: string) => void | Promise<void>;
   onDeleted: () => void | Promise<void>;
   onNotice: (msg: string) => void;
@@ -670,11 +594,7 @@ function ArtworkEditor({
       });
       const data = await res.json();
       if (!res.ok) {
-        onNotice(
-          data.message ??
-            data.error ??
-            "Could not update test flag. Run supabase/gallery_migration.sql if is_test is missing.",
-        );
+        onNotice(data.message ?? data.error ?? "Could not update test flag.");
         return;
       }
       await onUpdated(
@@ -867,21 +787,14 @@ function ArtworkEditor({
         <button
           type="button"
           className="btn"
-          disabled={togglingTest || migrationNeeded}
-          title={
-            migrationNeeded
-              ? "Run the database migration above first"
-              : undefined
-          }
+          disabled={togglingTest}
           onClick={() => void toggleTest()}
         >
           {togglingTest
             ? "Updating…"
-            : migrationNeeded
-              ? "Mark as test (run migration first)"
-              : artwork.is_test
-                ? "Mark as real"
-                : "Mark as test"}
+            : artwork.is_test
+              ? "Mark as real"
+              : "Mark as test"}
         </button>
       </div>
 

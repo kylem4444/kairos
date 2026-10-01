@@ -59,15 +59,8 @@ export async function PATCH(request: NextRequest, context: Ctx) {
     console.error("PATCH /api/admin/artworks/[id]", error);
     const message =
       error instanceof Error ? error.message : "Failed to update";
-    const migrationHint =
-      /is_test|destroyed_image_urls/i.test(message)
-        ? " Run supabase/gallery_migration.sql in the Supabase SQL editor."
-        : "";
     return NextResponse.json(
-      {
-        error: "Failed to update",
-        message: `${message}.${migrationHint}`.trim(),
-      },
+      { error: "Failed to update", message },
       { status: 500 },
     );
   }
