@@ -16,9 +16,9 @@ export default async function GalleryPage() {
   return (
     <main className="gallery-page">
       <header className="gallery-header">
-        <Link href="/" className="brand-lockup gallery-brand-link">
-          <BrandMark />
-          <span className="brand gallery-brand">Kairos</span>
+        <Link href="/" className="brand-lockup sale-seal gallery-brand-link">
+          <BrandMark size={88} className="brand-mark sale-mark" />
+          <span className="brand sale-wordmark gallery-brand">Kairos</span>
         </Link>
         <p className="gallery-kicker">Gallery</p>
         <p className="gallery-lede">Works that have passed through Kairos.</p>
