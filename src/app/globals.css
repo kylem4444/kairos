@@ -773,12 +773,30 @@ body {
 }
 
 .admin-thumb {
-  width: 88px;
+  position: relative;
+  width: 96px;
   border: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.25rem;
+}
+
+.admin-thumb-primary {
+  border-color: var(--ink);
+}
+
+.admin-thumb-badge {
+  position: absolute;
+  top: 0.35rem;
+  left: 0.35rem;
+  z-index: 1;
+  padding: 0.12rem 0.3rem;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .admin-thumb img {
@@ -788,6 +806,7 @@ body {
   display: block;
 }
 
+.admin-thumb-primary-btn,
 .admin-thumb-remove {
   appearance: none;
   border: 0;
@@ -798,6 +817,11 @@ body {
   color: var(--muted);
   cursor: pointer;
   padding: 0.2rem;
+}
+
+.admin-thumb-primary-btn:hover,
+.admin-thumb-remove:hover {
+  color: var(--ink);
 }
 
 .admin-upload-btn {

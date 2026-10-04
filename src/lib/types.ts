@@ -110,6 +110,12 @@ export function galleryUrls(artwork: Artwork): string[] {
     : [normalized.image_url];
 }
 
+/** Put `primaryUrl` first; used as the homepage hero (`image_url` / index 0). */
+export function withPrimaryImage(urls: string[], primaryUrl: string): string[] {
+  if (!urls.includes(primaryUrl)) return urls;
+  return [primaryUrl, ...urls.filter((url) => url !== primaryUrl)];
+}
+
 export function isDestroyedStatus(status: ArtworkStatus): boolean {
   return status === "destroyed" || status === "auto_destroyed";
 }

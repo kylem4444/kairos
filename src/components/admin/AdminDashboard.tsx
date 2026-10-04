@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { isHomepageLedeText } from "@/lib/copy";
 import type { AdminAnalytics, Artwork } from "@/lib/types";
-import { isDestroyedStatus } from "@/lib/types";
+import { isDestroyedStatus, withPrimaryImage } from "@/lib/types";
 import { formatUsdFromCents } from "@/lib/price";
 
 type SessionState = {
@@ -569,6 +569,22 @@ function ArtworkEditor({
     await onUpdated("Photo removed.");
   }
 
+  async function setPrimaryImage(url: string) {
+    if (artwork.image_urls[0] === url) return;
+    const next = withPrimaryImage(artwork.image_urls, url);
+    const res = await fetch(`/api/admin/artworks/${artwork.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image_urls: next }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      onNotice(data.error ?? "Could not set primary photo");
+      return;
+    }
+    await onUpdated("Primary photo updated.");
+  }
+
   async function removeDestroyedImage(url: string) {
     const next = artwork.destroyed_image_urls.filter((u) => u !== url);
     const res = await fetch(`/api/admin/artworks/${artwork.id}`, {
@@ -686,20 +702,46 @@ function ArtworkEditor({
       {!destroyed ? (
         <div className="admin-photos">
           <p className="admin-label">Photos</p>
+          <p className="admin-muted">
+            The primary photo is shown first on the homepage. Click Set primary
+            on another image to change it.
+          </p>
           <div className="admin-thumbs">
-            {artwork.image_urls.map((url) => (
-              <div key={url} className="admin-thumb">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="" />
-                <button
-                  type="button"
-                  className="admin-thumb-remove"
-                  onClick={() => void removeImage(url)}
+            {artwork.image_urls.map((url, index) => {
+              const isPrimary = index === 0;
+              return (
+                <div
+                  key={url}
+                  className={
+                    isPrimary
+                      ? "admin-thumb admin-thumb-primary"
+                      : "admin-thumb"
+                  }
                 >
-                  Remove
-                </button>
-              </div>
-            ))}
+                  {isPrimary ? (
+                    <span className="admin-thumb-badge">Primary</span>
+                  ) : null}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" />
+                  {!isPrimary ? (
+                    <button
+                      type="button"
+                      className="admin-thumb-primary-btn"
+                      onClick={() => void setPrimaryImage(url)}
+                    >
+                      Set primary
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="admin-thumb-remove"
+                    onClick={() => void removeImage(url)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              );
+            })}
           </div>
           <label className="btn admin-upload-btn">
             {uploading ? "Uploading…" : "Add photos"}
