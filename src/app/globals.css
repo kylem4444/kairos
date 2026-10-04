@@ -51,31 +51,12 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
-.sale-seal {
-  display: grid;
-  justify-items: center;
-  justify-content: center;
-  align-items: center;
-  gap: 0.4rem;
-  width: max-content;
-  margin-inline: auto;
-  text-align: center;
-}
-
+/* Keep after .brand / .brand-lockup so preview sizes win (see block below). */
 .sale-mark {
   display: block;
   width: 5.5rem !important;
   height: auto !important;
   margin-inline: auto;
-}
-
-.sale-wordmark {
-  margin: 0;
-  font-size: clamp(1.75rem, 3vw, 2.35rem);
-  line-height: 1;
-  text-align: center;
-  /* Bodoni italic reads left of its box — nudge to sit under the seal */
-  transform: translateX(0.14em);
 }
 
 .sale-body {
@@ -288,6 +269,27 @@ body {
   letter-spacing: -0.02em;
   line-height: 1;
   text-transform: none;
+}
+
+/* Layout-6 seal: must beat .brand-lockup / .brand (same element uses both classes). */
+.brand-lockup.sale-seal {
+  display: grid;
+  justify-items: center;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  width: max-content;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.brand.sale-wordmark {
+  margin: 0;
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
+  line-height: 1;
+  text-align: center;
+  /* Bodoni italic reads left of its box — nudge to sit under the seal */
+  transform: translateX(0.14em);
 }
 
 .artwork-details {
