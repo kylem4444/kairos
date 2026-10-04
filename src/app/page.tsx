@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { getArtworkPublicView } from "@/lib/artwork-service";
 import { ArtworkSale } from "@/components/ArtworkSale";
+import { BrandMark } from "@/components/BrandMark";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +11,14 @@ export default async function HomePage() {
 
   if (!view) {
     return (
-      <main className="empty">
-        <div>
-          <p className="brand">Kairos</p>
+      <main className="sale sale-empty">
+        <header className="sale-header">
+          <div className="brand-lockup sale-seal">
+            <BrandMark size={88} className="brand-mark sale-mark" />
+            <p className="brand sale-wordmark">Kairos</p>
+          </div>
+        </header>
+        <div className="sale-empty-body">
           <p className="rules">No artwork is live right now.</p>
           <p className="gallery-link">
             <Link href="/gallery">Gallery</Link>

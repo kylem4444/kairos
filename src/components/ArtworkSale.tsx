@@ -3,11 +3,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { HOMEPAGE_LEDE, isHomepageLedeText } from "@/lib/copy";
+import {
+  HOMEPAGE_QUOTE,
+  HOMEPAGE_QUOTE_CITE_HREF,
+  HOMEPAGE_QUOTE_CITE_LABEL,
+  SIDEBAR_RULES_AFTER,
+  SIDEBAR_RULES_CHOICE,
+  SIDEBAR_RULES_LEAD,
+  isHomepageLedeText,
+} from "@/lib/copy";
 import type { ArtworkPublicView, Outcome } from "@/lib/types";
 import { galleryUrls } from "@/lib/types";
 import { formatUsdFromCents } from "@/lib/price";
 import { ActionButtons } from "./ActionButtons";
+import { BrandMark } from "./BrandMark";
 import { EmbeddedCheckout } from "./EmbeddedCheckout";
 import { LivestreamEmbed } from "./LivestreamEmbed";
 import { PriceDisplay } from "./PriceDisplay";
@@ -71,7 +80,6 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
     return () => window.clearInterval(id);
   }, [refresh]);
 
-  // One page_view per artwork visit (sessionStorage dedupe)
   useEffect(() => {
     const key = `kairos_pv_${view.artwork.id}`;
     try {
@@ -83,7 +91,6 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
     trackEvent("page_view", view.artwork.id);
   }, [view.artwork.id]);
 
-  // Handle rare 3DS redirects back to the site
   useEffect(() => {
     const checkout = searchParams.get("checkout");
     const sessionId = searchParams.get("session_id");
@@ -141,11 +148,9 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
     }
   }, [view.artwork.status, checkoutOutcome]);
 
-  const statusCopy = useMemo(() => {
+  const settledCopy = useMemo(() => {
     const { artwork } = view;
     switch (artwork.status) {
-      case "live":
-        return "Seven days. One million to zero. Purchase or destroy at the current price.";
       case "purchased":
         return `Purchased for ${formatUsdFromCents(artwork.settled_amount_cents ?? 0)}.`;
       case "destroyed":
@@ -186,142 +191,179 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
   const showStream =
     (artwork.status === "destroyed" || artwork.status === "auto_destroyed") &&
     artwork.livestream_url;
+  const details = artworkDetails(artwork);
 
   return (
-    <main className="stage">
-      <div className="visual">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={images[activeImage] ?? artwork.image_url}
-          alt={artwork.title}
-          className="artwork-image"
-        />
+    <main className="sale">
+      <header className="sale-header">
+        <div className="brand-lockup sale-seal">
+          <BrandMark size={88} className="brand-mark sale-mark" />
+          <p className="brand sale-wordmark">Kairos</p>
+        </div>
+      </header>
 
-        {images.length > 1 ? (
-          <div className="thumbs" role="tablist" aria-label="Artwork views">
-            {images.map((src, index) => (
-              <button
-                key={`${src}-${index}`}
-                type="button"
-                role="tab"
-                aria-selected={activeImage === index}
-                className={
-                  activeImage === index ? "thumb thumb-active" : "thumb"
-                }
-                onClick={() => setActiveImage(index)}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt="" />
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      <section className="panel">
-        <p className="brand">Kairos</p>
-        <h1 className="title">{artwork.title}</h1>
-        <p className="lede">{HOMEPAGE_LEDE}</p>
-        {artworkDetails(artwork) ? (
-          <p className="artwork-details">{artworkDetails(artwork)}</p>
-        ) : null}
-
-        {isLive ? (
-          <PriceDisplay
-            startPriceCents={artwork.start_price_cents}
-            liveAt={liveAt}
-            durationMs={artwork.duration_ms}
-            active
+      <div className="sale-body">
+        <div className="sale-visual">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={images[activeImage] ?? artwork.image_url}
+            alt={artwork.title}
+            className="sale-image"
           />
-        ) : (
-          <p className="price">
-            <span className="price-label">Final</span>
-            <span className="price-value">
-              {artwork.status === "auto_destroyed"
-                ? "$0.00"
-                : formatUsdFromCents(artwork.settled_amount_cents ?? 0)}
-            </span>
-          </p>
-        )}
 
-        <p className="rules">{statusCopy}</p>
+          {images.length > 1 ? (
+            <div className="thumbs" role="tablist" aria-label="Artwork views">
+              {images.map((src, index) => (
+                <button
+                  key={`${src}-${index}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeImage === index}
+                  className={
+                    activeImage === index ? "thumb thumb-active" : "thumb"
+                  }
+                  onClick={() => setActiveImage(index)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt="" />
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
 
-        {banner ? (
-          <p className={`banner banner-${banner.kind}`} role="status">
-            {banner.text}
-          </p>
-        ) : null}
+        <section className="sale-panel">
+          <h1 className="title">{artwork.title}</h1>
+          {details ? <p className="artwork-details">{details}</p> : null}
 
-        {isLive && checkoutOutcome ? (
-          <EmbeddedCheckout
-            outcome={checkoutOutcome}
-            startPriceCents={artwork.start_price_cents}
-            liveAt={liveAt}
-            durationMs={artwork.duration_ms}
-            onCancel={() => {
-              setCheckoutOutcome(null);
-              setBanner({
-                kind: "info",
-                text: "Checkout cancelled. The artwork is still available.",
-              });
-            }}
-            onError={(message) => {
-              setBanner({ kind: "error", text: message });
-            }}
-            onSettled={async (result) => {
-              setCheckoutOutcome(null);
-              await refresh();
-              if (result.youWon) {
-                setBanner({
-                  kind: "success",
-                  text:
-                    result.outcome === "destroy"
-                      ? "Payment received. You destroyed the artwork."
-                      : "Payment received. You purchased the artwork.",
-                });
-              } else if (result.someoneElse) {
-                setBanner({
-                  kind: "error",
-                  text:
-                    result.message ??
-                    "Someone else claimed it first. If you were charged, you will be refunded.",
-                });
-              } else {
+          {isLive ? (
+            <PriceDisplay
+              startPriceCents={artwork.start_price_cents}
+              liveAt={liveAt}
+              durationMs={artwork.duration_ms}
+              active
+            />
+          ) : (
+            <p className="price">
+              <span className="price-label">Final</span>
+              <span className="price-value">
+                {artwork.status === "auto_destroyed"
+                  ? "$0.00"
+                  : formatUsdFromCents(artwork.settled_amount_cents ?? 0)}
+              </span>
+            </p>
+          )}
+
+          {isLive ? (
+            <p className="rules">
+              {SIDEBAR_RULES_LEAD}
+              <br />
+              <br />
+              {SIDEBAR_RULES_CHOICE}
+            </p>
+          ) : settledCopy ? (
+            <p className="rules">{settledCopy}</p>
+          ) : null}
+
+          {banner ? (
+            <p className={`banner banner-${banner.kind}`} role="status">
+              {banner.text}
+            </p>
+          ) : null}
+
+          {isLive && checkoutOutcome ? (
+            <EmbeddedCheckout
+              outcome={checkoutOutcome}
+              startPriceCents={artwork.start_price_cents}
+              liveAt={liveAt}
+              durationMs={artwork.duration_ms}
+              onCancel={() => {
+                setCheckoutOutcome(null);
                 setBanner({
                   kind: "info",
-                  text:
-                    result.message ??
-                    "Payment submitted. Confirming… refresh if needed.",
+                  text: "Checkout cancelled. The artwork is still available.",
                 });
-              }
-            }}
-          />
-        ) : null}
+              }}
+              onError={(message) => {
+                setBanner({ kind: "error", text: message });
+              }}
+              onSettled={async (result) => {
+                setCheckoutOutcome(null);
+                await refresh();
+                if (result.youWon) {
+                  setBanner({
+                    kind: "success",
+                    text:
+                      result.outcome === "destroy"
+                        ? "Payment received. You destroyed the artwork."
+                        : "Payment received. You purchased the artwork.",
+                  });
+                } else if (result.someoneElse) {
+                  setBanner({
+                    kind: "error",
+                    text:
+                      result.message ??
+                      "Someone else claimed it first. If you were charged, you will be refunded.",
+                  });
+                } else {
+                  setBanner({
+                    kind: "info",
+                    text:
+                      result.message ??
+                      "Payment submitted. Confirming… refresh if needed.",
+                  });
+                }
+              }}
+            />
+          ) : null}
 
-        {isLive && !checkoutOutcome ? (
-          <ActionButtons
-            disabled={false}
-            busy={busy}
-            onPurchase={() => void openCheckout("purchase")}
-            onDestroy={() => void openCheckout("destroy")}
-          />
-        ) : null}
+          {isLive && !checkoutOutcome ? (
+            <>
+              <ActionButtons
+                disabled={false}
+                busy={busy}
+                onPurchase={() => void openCheckout("purchase")}
+                onDestroy={() => void openCheckout("destroy")}
+              />
+              <p className="rules">{SIDEBAR_RULES_AFTER}</p>
+            </>
+          ) : null}
 
-        {showStream && artwork.livestream_url ? (
-          <LivestreamEmbed url={artwork.livestream_url} />
-        ) : null}
+          {showStream && artwork.livestream_url ? (
+            <LivestreamEmbed url={artwork.livestream_url} />
+          ) : null}
 
-        {view.demoMode ? (
-          <p className="demo-note">
-            Demo mode — no Stripe/Supabase keys detected. Checkout stays on this
-            page so you can watch the price and pay when you want.
+          {view.demoMode ? (
+            <p className="demo-note">
+              Demo mode — no Stripe/Supabase keys detected. Checkout stays on
+              this page so you can watch the price and pay when you want.
+            </p>
+          ) : null}
+
+          <p className="gallery-link">
+            <Link href="/gallery">Gallery</Link>
           </p>
-        ) : null}
+        </section>
+      </div>
 
-        <p className="gallery-link">
-          <Link href="/gallery">Gallery</Link>
+      <footer className="sale-footer">
+        <p className="sale-quote">
+          “{HOMEPAGE_QUOTE}”
+          <a className="sale-sup" href="#quote-cite-1" aria-label="Citation 1">
+            <sup>1</sup>
+          </a>
         </p>
-      </section>
+        <p id="quote-cite-1" className="sale-footnote">
+          <sup>1</sup>{" "}
+          <a
+            href={HOMEPAGE_QUOTE_CITE_HREF}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {HOMEPAGE_QUOTE_CITE_LABEL}
+          </a>
+        </p>
+      </footer>
     </main>
   );
 }

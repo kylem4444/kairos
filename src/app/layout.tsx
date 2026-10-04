@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   title: "Kairos — one artwork. one week. one million to zero.",
   description:
     "A single artwork for sale. The price decays from $1,000,000 to $0 over seven days. Purchase it or destroy it. If the price hits zero, it is destroyed on livestream.",
+  icons: {
+    icon: [{ url: "/brand/kairos-mark.png", type: "image/png" }],
+    apple: [{ url: "/brand/kairos-mark.png", type: "image/png" }],
+  },
   openGraph: {
     title: "Kairos",
     description:

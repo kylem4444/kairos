@@ -33,6 +33,150 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* —— Live sale layout (layout 6: centered seal, art + sidebar, quote below) —— */
+
+.sale {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.sale-header {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.85rem clamp(1.25rem, 4vw, 2.75rem) 0.95rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.sale-seal {
+  align-items: center;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sale-mark {
+  width: 5.5rem !important;
+  height: auto !important;
+}
+
+.sale-wordmark {
+  margin: 0;
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
+  line-height: 1;
+}
+
+.sale-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(15rem, 0.7fr);
+}
+
+.sale-visual {
+  position: relative;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.35rem, 1.2vw, 0.85rem);
+  padding-bottom: 4.5rem;
+  background: #fff;
+  overflow: hidden;
+}
+
+.sale-image {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - 14rem);
+  object-fit: contain;
+  display: block;
+  animation: fadeIn 0.9s ease both;
+}
+
+.sale-panel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.35rem;
+  padding: clamp(1.5rem, 3vw, 2.75rem);
+  border-left: 1px solid var(--line);
+  background: var(--bg);
+  overflow: auto;
+  animation: fadeIn 0.8s ease both;
+}
+
+.sale-footer {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 1.75rem 1.25rem 1.15rem;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+
+.sale-quote {
+  margin: 0;
+  max-width: 52ch;
+  font-family: var(--font-display), "Times New Roman", Times, serif;
+  font-size: clamp(0.88rem, 1.4vw, 1.05rem);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.sale-sup {
+  margin-left: 0.15em;
+  color: var(--muted);
+  text-decoration: none;
+  font-style: normal;
+}
+
+.sale-sup:hover {
+  color: var(--ink);
+}
+
+.sale-sup sup {
+  font-size: 0.65em;
+  line-height: 0;
+  vertical-align: super;
+}
+
+.sale-footnote {
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.sale-footnote a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.sale-footnote a:hover {
+  color: var(--ink);
+}
+
+.sale-empty-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+
 .stage {
   min-height: 100dvh;
   display: grid;
@@ -108,6 +252,21 @@ body {
   border-left: 1px solid var(--line);
   background: var(--bg);
   animation: fadeIn 0.8s ease both;
+}
+
+.brand-lockup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.brand-mark {
+  display: block;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .brand {
@@ -336,6 +495,11 @@ body {
   background: var(--bg);
 }
 
+.empty .brand-lockup {
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -346,6 +510,25 @@ body {
 }
 
 @media (max-width: 900px) {
+  .sale-body {
+    grid-template-columns: 1fr;
+  }
+
+  .sale-visual {
+    min-height: 52dvh;
+  }
+
+  .sale-image {
+    max-height: calc(52dvh - 4rem);
+  }
+
+  .sale-panel {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    justify-content: flex-start;
+    padding-top: 2.25rem;
+  }
+
   .stage {
     grid-template-columns: 1fr;
   }
@@ -671,7 +854,14 @@ body {
   padding-bottom: 1.75rem;
 }
 
+.gallery-brand-link {
+  text-decoration: none;
+  color: inherit;
+  width: fit-content;
+}
+
 .gallery-brand {
+  display: block;
   text-decoration: none;
   color: inherit;
   width: fit-content;
@@ -774,6 +964,470 @@ body {
 .gallery-back a:hover {
   color: var(--ink);
 }
+
+/* —— Private /layouts mockup studio (not linked from public pages) —— */
+
+.layout-studio {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.layout-studio-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  z-index: 2;
+}
+
+.layout-studio-title {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.layout-studio-note {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.layout-studio-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.layout-studio-tab {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: transparent;
+  padding: 0.45rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.layout-studio-tab-active,
+.layout-studio-tab:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.layout-studio-back {
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.layout-studio-back a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.layout-studio-back a:hover {
+  color: var(--ink);
+}
+
+.layout-studio-frame {
+  flex: 1;
+  min-height: 0;
+}
+
+.layout-studio-frame .mock-stage {
+  min-height: calc(100dvh - 7.5rem);
+}
+
+.layout-pick {
+  margin: 0.5rem 0 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.mock-artwork-stage {
+  display: grid;
+  grid-template-columns: 1.35fr 0.65fr;
+  min-height: calc(100dvh - 9.5rem);
+}
+
+.mock-stage-visual {
+  position: relative;
+  min-height: 100%;
+  background: #0a0a0a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.mock-stage-image {
+  width: 100%;
+  height: 100%;
+  max-height: calc(100dvh - 9.5rem);
+  object-fit: contain;
+}
+
+.mock-stage-strip {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  border-left: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.mock-stage-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.mock-brand-sm {
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
+}
+
+.mock-lede-compact {
+  max-width: 28ch;
+  font-size: 0.85rem;
+}
+
+.mock-centered {
+  min-height: calc(100dvh - 9.5rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.35rem;
+  padding: clamp(2rem, 5vw, 4rem) 1.5rem;
+  text-align: center;
+}
+
+.mock-centered-lockup {
+  align-items: center;
+}
+
+.mock-centered-lede {
+  max-width: 42ch;
+}
+
+.mock-centered-image {
+  width: min(100%, 420px);
+  max-height: 48dvh;
+  object-fit: contain;
+}
+
+.mock-centered .actions {
+  justify-content: center;
+}
+
+.mock-centered .price {
+  align-items: center;
+}
+
+.mock-topbrand {
+  height: calc(100dvh - 7.5rem);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.mock-topbrand-header {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.75rem clamp(1.25rem, 4vw, 2.5rem) 0.85rem;
+  text-align: center;
+}
+
+.mock-topbrand-lockup {
+  align-items: center;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.mock-topbrand-lockup .brand {
+  line-height: 1;
+}
+
+.mock-topbrand-mark {
+  width: min(11.5rem, 46vw) !important;
+  height: auto !important;
+  max-height: 14rem;
+  object-fit: contain;
+}
+
+.mock-topbrand-rule {
+  width: min(100%, 22rem);
+  height: 1px;
+  background: var(--line);
+}
+
+.mock-topbrand-lede {
+  margin: 0;
+  max-width: 56ch;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.mock-topbrand-quote {
+  margin: 0;
+  max-width: 48ch;
+  font-family: var(--font-display), "Times New Roman", Times, serif;
+  font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.55;
+  text-align: center;
+  color: var(--ink);
+}
+
+.mock-topbrand-sup {
+  margin-left: 0.15em;
+  color: var(--muted);
+  text-decoration: none;
+  font-style: normal;
+}
+
+.mock-topbrand-sup:hover {
+  color: var(--ink);
+}
+
+.mock-topbrand-sup sup {
+  font-size: 0.65em;
+  line-height: 0;
+  vertical-align: super;
+}
+
+.mock-topbrand-footnotes {
+  flex: 0 0 auto;
+  padding: 0.55rem 1.25rem 0.7rem;
+  border-top: 1px solid var(--line);
+}
+
+.mock-topbrand-footnote {
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.mock-topbrand-footnote a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.mock-topbrand-footnote a:hover {
+  color: var(--ink);
+}
+
+.mock-topbrand-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(16rem, 0.75fr);
+  border-top: 1px solid var(--line);
+}
+
+.mock-topbrand-visual {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.35rem, 1.2vw, 0.85rem);
+  background: #fff;
+  overflow: hidden;
+}
+
+.mock-topbrand-image {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* —— Header variants on the top-brand shell (5–7) —— */
+
+.mock-header-compact {
+  gap: 0.4rem;
+  padding: 0.55rem clamp(1rem, 3vw, 2rem) 0.65rem;
+}
+
+.mock-masthead-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+}
+
+.mock-mark-inline {
+  width: 3.25rem !important;
+  height: auto !important;
+}
+
+.mock-brand-masthead {
+  font-size: clamp(1.85rem, 3.2vw, 2.5rem);
+  margin: 0;
+  line-height: 1;
+}
+
+.mock-rule-full {
+  width: min(100%, 36rem);
+}
+
+.mock-quote-deck {
+  max-width: 58ch;
+  font-size: clamp(0.82rem, 1.25vw, 0.95rem);
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.mock-header-seal-only {
+  gap: 0;
+  padding: 0.85rem clamp(1.25rem, 4vw, 2.75rem) 0.95rem;
+}
+
+.mock-seal-centered {
+  align-items: center;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.mock-mark-asymmetric {
+  width: 5.5rem !important;
+  height: auto !important;
+}
+
+.mock-footnotes-with-quote {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 1.75rem 1.25rem 1.15rem;
+  text-align: center;
+}
+
+.mock-quote-below {
+  max-width: 52ch;
+  font-size: clamp(0.88rem, 1.4vw, 1.05rem);
+  color: var(--ink);
+}
+
+.mock-header-quoteled {
+  gap: 0.85rem;
+  padding: 1rem clamp(1.25rem, 4vw, 3rem) 1.1rem;
+}
+
+.mock-quote-hero {
+  max-width: 36ch;
+  font-size: clamp(1.15rem, 2.4vw, 1.65rem);
+  line-height: 1.4;
+  text-wrap: balance;
+}
+
+.mock-signature {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.mock-mark-signature {
+  width: 2.4rem !important;
+  height: auto !important;
+}
+
+.mock-brand-signature {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+  line-height: 1;
+}
+
+.mock-topbrand-panel {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.35rem;
+  padding: clamp(1.5rem, 3vw, 2.75rem);
+  border-left: 1px solid var(--line);
+  background: var(--bg);
+  overflow: auto;
+}
+
+@media (max-width: 900px) {
+  .mock-artwork-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .mock-stage-strip {
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+
+  .mock-stage-image {
+    max-height: 55dvh;
+  }
+
+  .mock-topbrand {
+    height: auto;
+    min-height: calc(100dvh - 9.5rem);
+    overflow: visible;
+  }
+
+  .mock-topbrand-body {
+    grid-template-columns: 1fr;
+  }
+
+  .mock-topbrand-visual {
+    height: 58dvh;
+    min-height: 320px;
+  }
+
+  .mock-topbrand-panel {
+    height: auto;
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+}
+
+/* Keep top-brand mock as split until phone widths — studio chrome is wide. */
+@media (min-width: 701px) {
+  .mock-topbrand-body {
+    grid-template-columns: minmax(0, 1.45fr) minmax(15rem, 0.7fr);
+  }
+
+  .mock-topbrand-panel {
+    border-left: 1px solid var(--line);
+    border-top: none;
+    height: 100%;
+  }
+
+  .mock-topbrand-visual {
+    height: 100%;
+  }
+}
+
 
 @media (max-width: 800px) {
   .admin-grid,

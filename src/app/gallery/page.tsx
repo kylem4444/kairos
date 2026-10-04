@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listArchiveArtworks } from "@/lib/artwork-service";
+import { BrandMark } from "@/components/BrandMark";
 import { GalleryGrid } from "@/components/GalleryGrid";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +16,9 @@ export default async function GalleryPage() {
   return (
     <main className="gallery-page">
       <header className="gallery-header">
-        <Link href="/" className="brand gallery-brand">
-          Kairos
+        <Link href="/" className="brand-lockup gallery-brand-link">
+          <BrandMark />
+          <span className="brand gallery-brand">Kairos</span>
         </Link>
         <p className="gallery-kicker">Gallery</p>
         <p className="gallery-lede">Works that have passed through Kairos.</p>
