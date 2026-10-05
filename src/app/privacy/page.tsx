@@ -51,6 +51,10 @@ export default function PrivacyPage() {
           Questions about this policy:{" "}
           <a href="mailto:trpa21cxx@mozmail.com">trpa21cxx@mozmail.com</a>
         </p>
+
+        <p>
+          See also our <Link href="/terms">Terms</Link> page.
+        </p>
       </div>
 
       <p className="legal-back">

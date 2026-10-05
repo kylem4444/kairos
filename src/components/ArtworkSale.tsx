@@ -365,6 +365,8 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
         </p>
         <p className="sale-legal-link">
           <Link href="/privacy">Privacy</Link>
+          <span aria-hidden="true"> / </span>
+          <Link href="/terms">Terms</Link>
         </p>
       </footer>
     </main>

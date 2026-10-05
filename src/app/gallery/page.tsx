@@ -36,6 +36,10 @@ export default async function GalleryPage() {
           ·
         </span>
         <Link href="/privacy">Privacy</Link>
+        <span className="gallery-back-sep" aria-hidden="true">
+          /
+        </span>
+        <Link href="/terms">Terms</Link>
       </p>
     </main>
   );
