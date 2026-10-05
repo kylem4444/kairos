@@ -2,13 +2,24 @@ import {
   demoCompletedSalesCount,
   demoCountEvents,
   demoLifetimeRevenueCents,
+  demoListEventMetas,
   demoTrackEvent,
 } from "./demo-store";
+import {
+  aggregateGeoFromMetas,
+  emptyGeoMetric,
+  type GeoMetricAggregate,
+} from "./geo";
 import { getSupabaseAdmin, isSupabaseConfigured } from "./supabase";
 import type {
   AdminAnalytics,
   AnalyticsEventName,
 } from "./types";
+
+export type AdminAnalyticsGeo = {
+  pageViews: GeoMetricAggregate;
+  checkoutOpens: GeoMetricAggregate;
+};
 
 function analyticsDemoMode(): boolean {
   return (
@@ -175,3 +186,66 @@ export async function getAdminAnalytics(): Promise<AdminAnalytics> {
     migrationNeeded,
   };
 }
+
+async function listEventMetas(
+  name: "page_view" | "checkout_open",
+): Promise<Array<Record<string, unknown>>> {
+  if (analyticsDemoMode()) {
+    return demoListEventMetas(name);
+  }
+
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("analytics_events")
+    .select("meta")
+    .eq("name", name)
+    .order("created_at", { ascending: false })
+    .limit(5000);
+
+  if (error) throw error;
+  return (data ?? []).map((row) =>
+    row.meta && typeof row.meta === "object"
+      ? (row.meta as Record<string, unknown>)
+      : {},
+  );
+}
+
+export async function getAnalyticsGeo(): Promise<AdminAnalyticsGeo> {
+  if (analyticsDemoMode()) {
+    // Seed a few sample points so the map is usable in local demo.
+    if (demoListEventMetas("page_view").length === 0) {
+      demoTrackEvent({
+        name: "page_view",
+        meta: { country: "US", region: "CO" },
+      });
+      demoTrackEvent({
+        name: "page_view",
+        meta: { country: "US", region: "NY" },
+      });
+      demoTrackEvent({
+        name: "page_view",
+        meta: { country: "GB" },
+      });
+      demoTrackEvent({
+        name: "checkout_open",
+        meta: { country: "US", region: "CO" },
+      });
+      demoTrackEvent({
+        name: "checkout_open",
+        meta: { country: "DE" },
+      });
+    }
+  }
+
+  const [pageMetas, checkoutMetas] = await Promise.all([
+    listEventMetas("page_view"),
+    listEventMetas("checkout_open"),
+  ]);
+
+  return {
+    pageViews: aggregateGeoFromMetas(pageMetas),
+    checkoutOpens: aggregateGeoFromMetas(checkoutMetas),
+  };
+}
+
+export { emptyGeoMetric };

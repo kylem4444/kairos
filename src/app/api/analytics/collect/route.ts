@@ -3,6 +3,7 @@ import {
   isAllowedEventName,
   trackAnalyticsEvent,
 } from "@/lib/analytics";
+import { geoFromRequestHeaders } from "@/lib/geo";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +25,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden event" }, { status: 403 });
     }
 
+    const geo = geoFromRequestHeaders(request.headers);
+    const meta: Record<string, unknown> = {
+      ...(body.meta ?? {}),
+      ...geo,
+    };
+
     await trackAnalyticsEvent({
       name: body.name,
       artwork_id: body.artwork_id,
-      meta: body.meta,
+      meta,
     });
 
     return NextResponse.json({ ok: true });

@@ -157,6 +157,90 @@ body {
   color: var(--ink);
 }
 
+.sale-legal-link {
+  margin: 0.35rem 0 0;
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sale-legal-link a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.sale-legal-link a:hover {
+  color: var(--ink);
+}
+
+.legal-page {
+  min-height: 100dvh;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3rem) 1.25rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.legal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.legal-title {
+  margin: 0;
+  font-family: var(--font-body), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.legal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.legal-body h2 {
+  margin: 0.75rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.legal-body p {
+  margin: 0;
+}
+
+.legal-back {
+  margin: 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.legal-back a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.legal-back a:hover {
+  color: var(--ink);
+}
+
 .sale-empty-body {
   flex: 1;
   display: flex;
@@ -663,6 +747,20 @@ body {
   text-align: center;
 }
 
+.admin-stat-button {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 0.35rem;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.admin-stat-button:hover {
+  border-color: var(--line);
+}
+
 .admin-stat-label {
   margin: 0;
   font-size: 0.65rem;
@@ -678,8 +776,123 @@ body {
   letter-spacing: -0.02em;
 }
 
-.admin-stat .admin-muted {
+.admin-stat .admin-muted,
+.admin-stat-button .admin-muted {
   text-align: center;
+}
+
+.admin-stat-action {
+  margin: 0.35rem 0 0;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.admin-geo-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.admin-geo-modal {
+  width: min(52rem, 100%);
+  max-height: min(90dvh, 44rem);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.25rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.admin-geo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.admin-geo-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.admin-geo-tab {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: transparent;
+  padding: 0.45rem 0.75rem;
+  font: inherit;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.admin-geo-tab-active,
+.admin-geo-tab:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.admin-geo-note {
+  margin: 0;
+  max-width: 52ch;
+}
+
+.admin-geo-map-wrap {
+  width: 100%;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.admin-geo-map {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.admin-geo-map-label {
+  pointer-events: none;
+  font-family: var(--font-body), "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.admin-geo-lists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.admin-geo-list {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.admin-geo-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.25rem;
+}
+
+@media (max-width: 700px) {
+  .admin-geo-lists {
+    grid-template-columns: 1fr;
+  }
 }
 
 .admin-row {
@@ -990,6 +1203,14 @@ body {
   font-size: 0.75rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.gallery-back-sep {
+  color: var(--line);
 }
 
 .gallery-back a {

@@ -5,6 +5,7 @@ import { isHomepageLedeText } from "@/lib/copy";
 import type { AdminAnalytics, Artwork } from "@/lib/types";
 import { isDestroyedStatus, withPrimaryImage } from "@/lib/types";
 import { formatUsdFromCents } from "@/lib/price";
+import { AnalyticsGeoModal } from "./AnalyticsGeoModal";
 
 type SessionState = {
   authenticated: boolean;
@@ -238,6 +239,10 @@ function AnalyticsPanel({
 }: {
   analytics: (AdminAnalytics & { lifetimeRevenueFormatted?: string }) | null;
 }) {
+  const [geoMetric, setGeoMetric] = useState<
+    "pageViews" | "checkoutOpens" | null
+  >(null);
+
   if (!analytics) {
     return (
       <section className="admin-panel admin-panel-overview">
@@ -253,7 +258,7 @@ function AnalyticsPanel({
       </h2>
       <p className="admin-muted admin-overview-note">
         Revenue and completed sales exclude test pieces (Stripe test mode or
-        marked as test).
+        marked as test). Click page views or checkout opens for a location map.
       </p>
       <div className="admin-stats">
         <Stat
@@ -268,11 +273,13 @@ function AnalyticsPanel({
           label="Page views"
           value={`${analytics.pageViews.all}`}
           hint={`7d ${analytics.pageViews.last7d} · 30d ${analytics.pageViews.last30d}`}
+          onClick={() => setGeoMetric("pageViews")}
         />
         <Stat
           label="Checkout opens"
           value={`${analytics.checkoutOpens.all}`}
           hint={`7d ${analytics.checkoutOpens.last7d} · 30d ${analytics.checkoutOpens.last30d}`}
+          onClick={() => setGeoMetric("checkoutOpens")}
         />
         <Stat
           label="Payments succeeded"
@@ -280,6 +287,12 @@ function AnalyticsPanel({
           hint={`7d ${analytics.paymentSucceeded.last7d} · 30d ${analytics.paymentSucceeded.last30d}`}
         />
       </div>
+      {geoMetric ? (
+        <AnalyticsGeoModal
+          initialMetric={geoMetric}
+          onClose={() => setGeoMetric(null)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -288,11 +301,28 @@ function Stat({
   label,
   value,
   hint,
+  onClick,
 }: {
   label: string;
   value: string;
   hint?: string;
+  onClick?: () => void;
 }) {
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className="admin-stat admin-stat-button"
+        onClick={onClick}
+      >
+        <p className="admin-stat-label">{label}</p>
+        <p className="admin-stat-value">{value}</p>
+        {hint ? <p className="admin-muted">{hint}</p> : null}
+        <p className="admin-stat-action">View map</p>
+      </button>
+    );
+  }
+
   return (
     <div className="admin-stat">
       <p className="admin-stat-label">{label}</p>

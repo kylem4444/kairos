@@ -272,6 +272,14 @@ export function demoCountEvents(
   }).length;
 }
 
+export function demoListEventMetas(
+  name: AnalyticsEventName,
+): Array<Record<string, unknown>> {
+  return analyticsEvents
+    .filter((e) => e.name === name)
+    .map((e) => e.meta ?? {});
+}
+
 /** Reset primary demo artwork (tests + admin reset-demo). */
 export function demoResetArtwork(overrides?: Partial<Artwork>): Artwork {
   sessions.clear();

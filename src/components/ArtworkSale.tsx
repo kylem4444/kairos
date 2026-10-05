@@ -363,6 +363,9 @@ export function ArtworkSale({ initial }: { initial: ArtworkPublicView }) {
             {HOMEPAGE_QUOTE_CITE_LABEL}
           </a>
         </p>
+        <p className="sale-legal-link">
+          <Link href="/privacy">Privacy</Link>
+        </p>
       </footer>
     </main>
   );
