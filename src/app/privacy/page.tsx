@@ -18,11 +18,6 @@ export default function PrivacyPage() {
       </header>
 
       <div className="legal-body">
-        <p>
-          This page describes how the Kairos website handles information. It is
-          not legal advice.
-        </p>
-
         <h2>What we collect</h2>
         <p>
           When you view the sale page or open checkout, we may record simple
@@ -45,12 +40,6 @@ export default function PrivacyPage() {
           information to settle the sale of the artwork.
         </p>
 
-        <h2>Admin access</h2>
-        <p>
-          The private dashboard uses a login cookie so operators stay signed in.
-          That cookie is not set for ordinary visitors browsing the public site.
-        </p>
-
         <h2>We do not sell your data</h2>
         <p>
           We do not sell personal information. We do not use advertising
@@ -59,8 +48,8 @@ export default function PrivacyPage() {
 
         <h2>Contact</h2>
         <p>
-          Questions about this policy: replace this line with your contact email
-          when you are ready (for example, hello@yourdomain.com).
+          Questions about this policy:{" "}
+          <a href="mailto:trpa21cxx@mozmail.com">trpa21cxx@mozmail.com</a>
         </p>
       </div>
 
